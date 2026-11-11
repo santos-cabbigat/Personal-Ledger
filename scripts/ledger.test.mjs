@@ -8,7 +8,7 @@ const source=readFileSync(new URL('../apps-script/Code.gs',import.meta.url),'utf
 const accounts=[{code:'1100',name:'Cash',type:'Asset',use:'Posting'},{code:'5100',name:'Supplies',type:'Expense',use:'Posting'},{code:'1110',name:'Bank',type:'Asset',use:'Posting'}];
 function fixture() {
   const book={getId:()=>'ledger',getSheetByName:()=>tab,getSpreadsheetTimeZone:()=>'Asia/Vientiane'};
-  const tab={getSheetId:()=>1,getRange:()=>({getDisplayValues:()=>[['Project','Edit request ID']]})};
+  const tab={getSheetId:()=>1,getMaxRows:()=>1000,getRange:()=>({getDisplayValues:()=>[['Project','Edit request ID']]})};
   const raw=[], locks=[];
   const context=vm.createContext({Date,Map,Set,Utilities:{
     DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(algo,value)=>createHash(algo).update(value).digest(),
@@ -18,7 +18,7 @@ function fixture() {
       const convert=row=>row.values.map(c=>Object.values(c.userEnteredValue)[0]);
       for(const req of requests){
         if(req.appendCells)raw.push(...req.appendCells.rows.map(convert));
-        if(req.updateCells)raw[req.updateCells.start.rowIndex-1]=convert(req.updateCells.rows[0]);
+        if(req.updateCells)req.updateCells.rows.forEach((row,i)=>raw[req.updateCells.start.rowIndex-1+i]=convert(row));
         if(req.repeatCell)raw[req.repeatCell.range.startRowIndex-1]=Array(14).fill('');
       }
     }}}});

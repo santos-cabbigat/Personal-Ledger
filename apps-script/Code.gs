@@ -14,7 +14,7 @@ function initializeLedger() {
 const TYPES = ['Asset','Liability','Equity','Income','Expense'];
 const BOOKS = ['Personal','Business'];
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addToUi();
+  SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addItem('Post selected journal entry','postSelectedJournalEntry').addToUi();
 }
 function openLedger() {
   SpreadsheetApp.getUi().showSidebar(page_().setTitle('Ledger'));
@@ -71,6 +71,82 @@ function driveItem_(role, name, mimeType, parent) {
   if (parent) resource.parents = [parent];
   return Drive.Files.create(resource,null,{fields:'id'}).id;
 }
+function journalRules_(journalId,settingsId,firstBlank,rowCount) {
+  const requests=[];
+  const cells=(col,first=1,end=rowCount)=>({sheetId:journalId,startRowIndex:first,endRowIndex:end,startColumnIndex:col,endColumnIndex:col+1});
+  const field=(range,cell,fields)=>requests.push({repeatCell:{range,cell,fields}});
+  const settingsRows=[['Posting account codes','Posting account names'],[
+    '=IFERROR(FILTER(Accounts!A2:A,Accounts!E2:E="Posting"),"")',
+    '=IFERROR(FILTER(Accounts!B2:B,Accounts!E2:E="Posting"),"")'
+  ]];
+  requests.push({updateCells:{start:{sheetId:settingsId,rowIndex:0,columnIndex:3},rows:settingsRows.map((row,i)=>({values:row.map(value=>({
+    userEnteredValue:i?{formulaValue:value}:{stringValue:value}
+  }))})),fields:'userEnteredValue'}});
+  function rule(col,type,values,help,strict=true){
+    const condition={type};
+    if(values.length)condition.values=values.map(userEnteredValue=>({userEnteredValue}));
+    requests.push({setDataValidation:{range:cells(col),rule:{condition,strict,showCustomUi:true,inputMessage:help}}});
+  }
+  rule(1,'DATE_IS_VALID',[],'Choose a journal date.');
+  rule(2,'ONE_OF_LIST',BOOKS,'Choose Personal or Business.');
+  rule(4,'ONE_OF_RANGE',["=Settings!$D$2:$D"],'Select a posting account code, or choose its name in column F.',false);
+  rule(5,'ONE_OF_RANGE',["=Settings!$E$2:$E"],'Choose a posting account name.',false);
+  field(cells(1),{userEnteredFormat:{numberFormat:{type:'DATE',pattern:'yyyy-mm-dd'}}},'userEnteredFormat.numberFormat');
+  for(const col of [7,8])field(cells(col),{userEnteredFormat:{numberFormat:{type:'NUMBER',pattern:'#,##0.##'}}},'userEnteredFormat.numberFormat');
+  if(firstBlank<rowCount){
+    const n=firstBlank+1;
+    const code='=IF(F'+n+'="","",IFERROR(INDEX(Accounts!$A$2:$A,MATCH(F'+n+',Accounts!$B$2:$B,0)),""))';
+    const type='=IF(E'+n+'="","",IFERROR(INDEX(Accounts!$C$2:$C,MATCH(TO_TEXT(E'+n+'),ARRAYFORMULA(TO_TEXT(Accounts!$A$2:$A)),0)),""))';
+    field(cells(4,firstBlank),{userEnteredValue:{formulaValue:code}},'userEnteredValue');
+    field(cells(6,firstBlank),{userEnteredValue:{formulaValue:type}},'userEnteredValue');
+  }
+  field(cells(0,0,1),{note:'Assigned when you post. Select a transaction row and use Ledger → Post selected journal entry, or review and post the draft in the app.'},'note');
+  return requests;
+}
+function setupJournal_(sheet) {
+  const journal=sheet.getSheetByName('Journal'), settings=sheet.getSheetByName('Settings');
+  const existing=settings.getRange('D1:E2').getDisplayValues()[0];
+  if((existing[0] && existing[0]!=='Posting account codes')||(existing[1] && existing[1]!=='Posting account names'))
+    throw Error('Settings columns D and E are already in use.');
+  const used=rows_(sheet,'Journal',JOURNAL_HEADERS.length);
+  const requests=journalRules_(journal.getSheetId(),settings.getSheetId(),used.length+1,journal.getMaxRows());
+  Sheets.Spreadsheets.batchUpdate({requests},sheet.getId());
+}
+// A bound workbook can immediately fill the matching account when either dropdown changes.
+function onEdit(e){
+  if(!e || !e.range)return;
+  const range=e.range, tab=range.getSheet();
+  if(tab.getName()!=='Journal' || range.getLastRow()<2 || range.getColumn()>6 || range.getLastColumn()<5)return;
+  const chart=accounts_(e.source).filter(a=>a.use==='Posting');
+  const first=Math.max(2,range.getRow()),count=range.getLastRow()-first+1;
+  const target=tab.getRange(first,5,count,3), values=target.getValues(), formulas=target.getFormulas();
+  const editName=range.getColumn()===6,editCode=range.getLastColumn()===5;
+  for(let i=0;i<count;i++){
+    const [code,name]=values[i],n=first+i;
+    if(!code&&!name)continue;
+    const matched=editName || (!editCode && !code) ? chart.filter(a=>a.name===String(name)) : chart.filter(a=>a.code===String(code));
+    if(matched.length!==1 || (!editName&&!editCode && code && name && matched[0].name!==String(name)))continue;
+    const account=matched[0];
+    if(editName && !formulas[i][0])tab.getRange(n,5).setValue(account.code);
+    if(!editName && String(name)!==account.name)tab.getRange(n,6).setValue(account.name);
+    if(!formulas[i][2] && values[i][2]!==account.type)tab.getRange(n,7).setValue(account.type);
+  }
+}
+function postSelectedJournalEntry(){
+  const sheet=SpreadsheetApp.getActiveSpreadsheet(), range=sheet.getActiveRange();
+  if(range.getSheet().getName()!=='Journal'||range.getRow()<2)throw Error('Select a transaction row in Journal first.');
+  const raw=rows_(sheet,'Journal',JOURNAL_HEADERS.length);
+  const target=[...journalGroups_(raw)].find(([,items])=>items.some(item=>item.number===range.getRow()));
+  if(!target)throw Error('Select a row with a journal entry.');
+  const view=journalState_(sheet,accounts_(sheet));
+  const lines=view.entries.filter(line=>line.groupKey===target[0]), first=lines[0];
+  if(!first)throw Error(view.warnings.find(w=>w.startsWith('Row '+target[1][0].number+' ' ) || w.startsWith('Row '+target[1][0].number+':'))||'Complete both sides of this entry first.');
+  if(!first.sheetDraft){sheet.toast('Already posted as '+first.id);return;}
+  const email=signedIn_();
+  const id=postWithContext_({ledgerId:sheet.getId(),editId:first.id,groupKey:first.groupKey,revision:first.revision,key:Utilities.getUuid(),
+    date:first.date,book:first.book,memo:first.memo,project:first.project,lines}, {sheet,email});
+  sheet.toast('Posted as '+id);
+}
 function setupNewBook_(sheet) {
   const seed = [
     ['1000','Assets','Asset','','Group'],['1100','Cash on hand','Asset','1000','Posting'],['1110','Bank','Asset','1000','Posting'],
@@ -92,6 +168,7 @@ function setupNewBook_(sheet) {
     }
   }
   schema_(sheet);
+  setupJournal_(sheet);
 }
 function connectPersonalDrive() {
   const email = signedIn_(), lock=LockService.getUserLock();
@@ -119,7 +196,9 @@ function rows_(sheet, name, columns) {
   const tab = sheet.getSheetByName(name);
   if (!tab) throw Error('Missing sheet: '+name);
   const count = tab.getLastRow()-1;
-  return count>0 ? tab.getRange(2,1,count,columns).getValues() : [];
+  const rows=count>0 ? tab.getRange(2,1,count,columns).getValues() : [];
+  while(rows.length && rows[rows.length-1].every(value=>value==='')) rows.pop();
+  return rows;
 }
 function date_(value) {
   return value instanceof Date ? Utilities.formatDate(value,'Asia/Vientiane','yyyy-MM-dd') : String(value);
@@ -161,7 +240,7 @@ function journalState_(sheet, accounts) {
     try {
       const rows=group.map(item=>item.row);
       const shared = index => {
-        const values = [...new Set(rows.map(row=>row[index] instanceof Date ?
+        const values = [...new Set(rows.map(row=>index===1 && typeof row[1]==='number' ? new Date((row[1]-25569)*86400000).toISOString().slice(0,10) : row[index] instanceof Date ?
           Utilities.formatDate(row[index],tz,'yyyy-MM-dd') : String(row[index]).trim()).filter(Boolean))];
         if(values.length>1) throw Error('Use the same date, book, description and project on its lines.');
         return values[0] || '';
@@ -171,7 +250,10 @@ function journalState_(sheet, accounts) {
       let debitCents=0,creditCents=0;
       const version=revision_(rows);
       const lines=rows.map(r=>{
-        const code=String(r[4]).trim(), a=chart.get(code);
+        let code=String(r[4]).trim();
+        if(!code && r[5]) { const candidates=accounts.filter(a=>a.use==='Posting' && a.name===String(r[5]));if(candidates.length===1)code=candidates[0].code; }
+        const a=chart.get(code);
+        if(!id && a && r[5] && a.name!==String(r[5])) throw Error('Account name and code differ. Reselect the account or clear the unused field.');
         if(!a || a.use!=='Posting') throw Error('Choose a posting account code from Accounts.');
         const debit=cents_(r[7]),credit=cents_(r[8]);
         if((debit>0)===(credit>0)) throw Error('Each line needs one debit or credit.');
@@ -270,8 +352,11 @@ function nextEntryId_(date, existingIds) {
 }
 
 function postEntry(input) {
+  return postWithContext_(input,context_());
+}
+function postWithContext_(input,{sheet,email}) {
   return lock_(()=>{
-    const {sheet,email}=context_(),journal=sheet.getSheetByName('Journal');
+    const journal=sheet.getSheetByName('Journal');
     checkLedger_(sheet,input.ledgerId);
     if (!/^[a-f0-9-]{36}$/i.test(String(input.key))) throw Error('Missing posting reference.');
     const rows=rows_(sheet,'Journal',JOURNAL_HEADERS.length);
@@ -301,6 +386,8 @@ function postEntry(input) {
     const posted=edit && !sheetPosting ? [original[9],original[10] instanceof Date ? original[10].toISOString() : original[10],original[11]] :
       [email,new Date().toISOString(),input.key];
     const values=makeLines_(sheet,input,id,posted);
+    // Use a native Sheet date so the calendar and the date validation also work on app posts.
+    values.forEach(row=>row[1]=Math.round(Date.parse(input.date)/86400000)+25569);
     const common=Math.min(positions.length,values.length);
     for(let i=0;i<common;i++) requests.push(update(positions[i]+1,0,[values[i]]));
     for(let i=common;i<positions.length;i++){
@@ -308,7 +395,10 @@ function postEntry(input) {
         cell:{},fields:'userEnteredValue'}});
     }
     if(common<values.length){
-      requests.push({appendCells:{sheetId,rows:values.slice(common).map(cells_),fields:'userEnteredValue'}});
+      const extra=values.slice(common);
+      const required=rows.length+1+extra.length-journal.getMaxRows();
+      if(required>0)requests.push({appendDimension:{sheetId,dimension:'ROWS',length:required}});
+      requests.push(update(rows.length+1,0,extra));
     }
     Sheets.Spreadsheets.batchUpdate({requests},sheet.getId());
     return id;
