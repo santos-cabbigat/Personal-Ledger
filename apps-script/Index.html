@@ -7,7 +7,7 @@ main{padding-top:12px}header.hero{min-height:91px;position:relative;isolation:is
 .orb{position:absolute;right:32px;top:-20px;width:124px;height:124px;border-radius:50%;opacity:.65;z-index:-1;background:radial-gradient(circle,#80dcff 1px,transparent 1.6px) 0 0/5px 5px,radial-gradient(at 35% 30%,#7b3385,#234c80 50%,transparent 72%);mask-image:radial-gradient(circle at 56% 42%,#000 18%,#0008 48%,transparent 72%);transform:rotate(-20deg)}
 .hero .gear{background:#111b32c9}.tiles{margin:14px 0 16px}.tiles button{display:flex;align-items:center;gap:8px;font-size:15px}.tiles i{display:grid;place-items:center;width:22px}.tiles svg{width:19px;height:19px;fill:none;stroke:#b4e9ff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .panel{background:linear-gradient(110deg,#1c203c,#131e36);border-top-color:#927acc}.kpi{font-size:30px}.status{margin-top:8px;color:#c3b6f2}.item{border-color:#273552}button{touch-action:manipulation}button:active{filter:brightness(1.22)}h2{letter-spacing:-.02em}
-.statement{color:#23213b;background:#fff;border-radius:16px;overflow:hidden;text-align:left;font-variant-numeric:tabular-nums}.statementHead{background:linear-gradient(112deg,#191e38,#483870);padding:23px 20px;color:white;border-bottom:4px solid #8cded3}.statementHead small{color:#d6fcf7;font-size:10px;font-weight:750;letter-spacing:.14em}.statementHead h2{font-size:29px;color:white;margin:6px 0}.statementHead p{margin:0;color:#e7def9;font-size:14px}.statement section,.statement footer{padding:16px 20px}.statement section+section{border-top:1px solid #e6e3ef}.statement h3{font-size:16px;margin:0 0 12px;color:#46346a}.statement .closing{background:#e1f5f0;border-left:4px solid #408a80;padding:10px 14px;display:grid;gap:2px;margin:0 0 13px}.closing span,.metrics small{font-size:12px;color:#514d65}.closing strong{font-size:27px;overflow-wrap:anywhere}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metrics small,.metrics b{display:block}.metrics b{font-size:clamp(12px,2.6vw,17px);overflow-wrap:anywhere}.statement h4{margin:12px 0 4px;color:#51416b;font-size:13px}.rline{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #efedf3;font-size:13px}.statement footer{background:#f0edf7;color:#514467;font-size:12px}.reportClean .statement{border-radius:3px}.reportClean>header{display:none}.reportClean{background:#fff;padding:4px}.reportClean .body{margin:0}.reportClean .actions{padding:4px}.reportClean .actions button{font-size:12px}.reportClean [hidden]{display:none}
+.statement{color:#23213b;background:#fff;border-radius:16px;overflow:hidden;text-align:left;font-variant-numeric:tabular-nums}.statementHead{background:linear-gradient(112deg,#191e38,#483870);padding:23px 20px;color:white;border-bottom:4px solid #8cded3}.statementHead small{color:#d6fcf7;font-size:10px;font-weight:750;letter-spacing:.14em}.statementHead h2{font-size:29px;color:white;margin:6px 0}.statementHead p{margin:0;color:#e7def9;font-size:14px}.statement section,.statement footer{padding:16px 20px}.statement section+section{border-top:1px solid #e6e3ef}.statement h3{font-size:16px;margin:0 0 12px;color:#46346a}.statement .closing{background:#e1f5f0;border-left:4px solid #408a80;padding:10px 14px;display:grid;gap:2px;margin:0 0 13px}.closing span,.metrics small{font-size:12px;color:#514d65}.closing strong{font-size:27px;overflow-wrap:anywhere}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metrics small,.metrics b{display:block}.metrics b{font-size:clamp(12px,2.6vw,17px);overflow-wrap:anywhere}.statement h4{margin:12px 0 4px;color:#51416b;font-size:13px}.rline{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #efedf3;font-size:13px}.statement footer{background:#f0edf7;color:#514467;font-size:12px}.statementImage{display:block;width:100%;height:auto}.reportClean .actions .link{font-size:14px}.reportClean .statement{border-radius:3px}.reportClean>header{display:none}.reportClean{background:#fff;padding:4px}.reportClean .body{margin:0}.reportClean .actions{padding:4px}.reportClean .actions button{font-size:12px}.reportClean [hidden]{display:none}
 </style></head><body><main><header class="hero"><div class="orb" aria-hidden="true"></div><h1 id="title">Shared ledger</h1><button class="gear" aria-label="Settings" onclick="settings()">⚙</button></header><nav class="tiles"><button onclick="journals()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2zM8 4v16m3-11h5m-5 4h4"/></svg></i>Journal</button><button onclick="accountsView()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="5" rx="1"/><path d="M12 8v4M5 15v-3h14v3"/><rect x="2" y="15" width="6" height="5" rx="1"/><rect x="16" y="15" width="6" height="5" rx="1"/></svg></i>Accounts</button><button onclick="entryForm('Expense')"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg></i>Expense</button><button onclick="reports()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 17v-4h3v4m3 0V8h3v9m3 0V4h3v13"/></svg></i>Reports</button></nav><div class="row"><select id="scope" aria-label="Home book" onchange="home()"><option value="">All books</option></select><button onclick="load()">Refresh</button></div><div class="status" id="status" role="status"></div><div id="homeData"></div></main><dialog id="modal"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <script>
 'use strict';
@@ -222,6 +222,60 @@ function reportData(){
   el('result').innerHTML='<p class="sub">'+esc(scope.join(' · '))+'</p>'+html;
   reportExport={name:kind,rows:[[kind],['Book','Project','Category','From','Through','Entry status'],scope,[],headers,...records]};
 }
+function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,expense,openingFunds,groups,postedCount,pending,basis}){
+  const width=900,pad=52,inner=width-2*pad;
+  const canvas=document.createElement('canvas'),scale=1.5;
+  canvas.width=width*scale;canvas.height=1230*scale;
+  const ctx=canvas.getContext('2d');ctx.scale(scale,scale);
+  const ink='#211f39',muted='#635f77',navy='#191e38',violet='#513b79',teal='#175e57';
+  const font=(size,weight=400)=>{ctx.font=weight+' '+size+'px Arial, sans-serif'};
+  const text=(value,x,y,size,weight=400,color=ink)=>{font(size,weight);ctx.fillStyle=color;ctx.fillText(String(value),x,y)};
+  const fit=(value,x,y,max,size,weight,color)=>{font(size,weight);while(ctx.measureText(value).width>max&&size>14)font(--size,weight);text(value,x,y,size,weight,color)};
+  const rect=(x,y,w,h,color)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h)};
+  const money=n=>amount(n);
+  rect(0,0,width,1230,'#ffffff');
+  const grad=ctx.createLinearGradient(0,0,width,250);grad.addColorStop(0,navy);grad.addColorStop(1,violet);rect(0,0,width,235,grad);
+  text('MONTHLY FINANCIAL UPDATE',pad,54,17,700,'#baf4e9');fit(book,pad,130,inner,58,700,'#ffffff');
+  text(periodLabel+(asOf?'   ·   Entries through '+asOf:''),pad,182,23,400,'#eee6ff');
+  rect(0,235,width,7,'#8ad9c9');
+  let y=288;
+  text('Money left in the bank',pad,y,24,600,teal);fit(money(opening+received-spent),pad,y+65,inner,62,700,ink);
+  y+=96;rect(pad,y,inner,98,'#e9f6f3');
+  const metrics=[['Bank at start',opening],['Money in',received],['Money out',spent]];
+  metrics.forEach(([label,n],i)=>{const x=pad+18+i*inner/3;text(label,x,y+34,18,400,muted);fit(money(n),x,y+72,inner/3-32,27,700,ink)});
+  y+=145;
+  const wrap=(value,size,max)=>{font(size);const lines=[];let line='';for(const word of value.split(' ')){if(line&&ctx.measureText(line+' '+word).width>max){lines.push(line);line=word}else line+=(line?' ':'')+word}if(line)lines.push(line);return lines};
+  const summary=openingFunds>0?'Of the money in, '+money(openingFunds)+' was recorded as opening funds.':'The bank started at '+money(opening)+'. Money in less money out gives the balance above.';
+  for(const line of wrap(summary,22,inner)){text(line,pad,y,22,400,muted);y+=30}
+  y+=24;
+  const detail=(title,total,items,empty)=>{
+    rect(pad,y-20,6,31,'#a892d3');text(title,pad+18,y+2,26,700,violet);
+    y+=44;
+    const rows=items.slice().sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+    const visible=rows.length>3?[...rows.slice(0,2),['Other accounts',rows.slice(2).reduce((sum,x)=>sum+x[1],0)]]:rows;
+    if(!visible.length){text(empty,pad+4,y,20,400,muted);y+=32;}
+    for(const [label,n] of visible){
+      const end=money(n);font(22,600);const tw=ctx.measureText(end).width;fit(label,pad+4,y,inner-tw-28,21,400,ink);text(end,width-pad-tw,y,22,600,ink);
+      rect(pad,y+12,inner,1,'#e6e1ed');y+=45;
+    }
+    text('Total',pad+4,y,20,700,ink);font(23,700);const val=money(total);text(val,width-pad-ctx.measureText(val).width,y,23,700,ink);y+=64;
+  };
+  const sources=[],uses=[];
+  for(const g of groups.values()){
+    if(g.type==='Income')sources.push([/donat|contrib/i.test(g.name)?'Contributions':g.name,[...g.accounts.values()].reduce((sum,c)=>sum+c,0)/100]);
+    else for(const [label,c] of g.accounts)uses.push([label,c/100]);
+  }
+  detail('Where the income came from',income,sources,'No income recorded for this period.');
+  detail('What the money was spent on',expense,uses,'No expenses recorded for this period.');
+  rect(pad,y-17,inner,60,'#eee9f8');text('Income less expenses',pad+16,y+21,20,600,violet);
+  const result=money(income-expense);font(25,700);text(result,width-pad-16-ctx.measureText(result).width,y+22,25,700,violet);
+  y+=82;
+  text('Amounts in Lao kip',pad,y,16,500,muted);
+  const footer=postedCount+' posted  ·  '+pending+' balanced drafts '+(basis==='Posted only'?'excluded':'included');
+  font(16);text(footer,width-pad-ctx.measureText(footer).width,y,16,400,muted);
+  const cropped=document.createElement('canvas');cropped.width=canvas.width;cropped.height=Math.ceil((y+34)*scale);
+  cropped.getContext('2d').drawImage(canvas,0,0);return cropped.toDataURL('image/png');
+}
 function monthlyReport(book,month,clean=false,basis){
   basis=basis||el('monthBasis')?.value||el('reportBasis')?.value||'All balanced entries';
   book=book||el('reportBook')?.value||el('scope').value||(data.books.includes('Project 1')?'Project 1':data.books[0]);
@@ -245,15 +299,27 @@ function monthlyReport(book,month,clean=false,basis){
   const metric=(label,value)=>'<div><small>'+esc(label)+'</small><b>'+esc(amount(value))+'</b></div>';
   const periodLabel=new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01T00:00:00Z'));
   const postedCount=new Set(inMonth.filter(r=>!r.sheetDraft).map(r=>r.id)).size,pending=new Set(entries.filter(r=>r.sheetDraft&&period(r)).map(r=>r.id)).size;
+  const latest=inMonth.reduce((max,r)=>r.date>max?r.date:max,'');
+  const openingFunds=groupEntries(inMonth).reduce((total,lines)=>{
+    const bankLines=lines.filter(l=>accountMap.get(l.code)?.role==='Bank');
+    const other=lines.filter(l=>accountMap.get(l.code)?.role!=='Bank');
+    if(!bankLines.length||!other.length||!other.every(l=>l.type==='Equity'&&/opening balance|beginning balance/i.test(l.name)))return total;
+    return total+Math.max(0,sum(bankLines,'debit')-sum(bankLines,'credit'));
+  },0);
   const details=[...groups.values()].sort((a,b)=>b.type.localeCompare(a.type)||a.name.localeCompare(b.name)).map(g=>'<h4>'+esc(g.name)+'</h4>'+[...g.accounts].sort((a,b)=>a[0].localeCompare(b[0])).map(([name,c])=>'<div class="rline"><span>'+esc(name)+'</span><b>'+esc(amount(c/100))+'</b></div>').join('')).join('');
   const command='monthlyReport(el(\'monthBook\').value,el(\'monthPeriod\').value';
   const controls='<div class="monthControls two" '+(clean?'hidden':'')+'>'+field('Book','<select id="monthBook" onchange="'+command+')">'+options(data.books,book)+'</select>')+field('Month','<input id="monthPeriod" type="month" value="'+esc(month)+'" onchange="if(this.value)'+command+')">')+field('Entry status','<select id="monthBasis" onchange="'+command+')">'+options(['All balanced entries','Posted only'],basis)+'</select>')+'</div>';
   const sheet='<article class="statement"><div class="statementHead"><small>MONTHLY FINANCIAL REPORT</small><h2>'+esc(book)+'</h2><p>'+esc(periodLabel)+' · Lao kip</p></div>'+
-    '<section><h3>Bank movement</h3><div class="closing"><span>Closing bank balance</span><strong>'+esc(amount(opening+received-spent))+'</strong></div><div class="metrics">'+metric('Opening balance',opening)+metric('Money in',received)+metric('Money out',spent)+'</div></section>'+
-    '<section><h3>Income &amp; expenses</h3><div class="metrics">'+metric('Income',income)+metric('Expenses',expense)+metric('Net activity',income-expense)+'</div></section>'+
+    '<section><h3>Bank movement</h3><div class="closing"><span>Money left in the bank</span><strong>'+esc(amount(opening+received-spent))+'</strong></div><div class="metrics">'+metric('Opening balance',opening)+metric('Money in',received)+metric('Money out',spent)+'</div></section>'+
+    '<section><h3>Income &amp; expenses</h3><div class="metrics">'+metric('Income',income)+metric('Expenses',expense)+metric('Income less expenses',income-expense)+'</div></section>'+
     '<section><h3>Account breakdown</h3>'+(details||'<p>No income or expenses for this selection.</p>')+'</section>'+
     '<footer>Posted entries: '+postedCount+(pending?' · '+(basis==='Posted only'?'Balanced drafts excluded: ':'Balanced drafts included: ')+pending:'')+'</footer></article>';
-  dialog('Monthly report',controls+sheet+'<div class="actions">'+btn(clean?'Show controls':'Screenshot view',command+','+(!clean)+')')+'</div>');
+  if(clean){
+    const image=makeReportImage({book,periodLabel,asOf:displayDate(latest),opening,received,spent,income,expense,openingFunds,groups,postedCount,pending,basis});
+    const file=(book+'-'+month+'-financial-update.png').replace(/[^a-z0-9._-]/gi,'-');
+    const actions='<div class="actions"><a class="link" download="'+esc(file)+'" href="'+image+'">Save report image</a>'+btn('Show controls',command+',false)')+'</div>';
+    dialog('Monthly report',controls+'<img class="statementImage" src="'+image+'" alt="Monthly financial update for '+esc(book)+'. Money left in the bank: '+esc(amount(opening+received-spent))+'">'+actions);
+  }else dialog('Monthly report',controls+sheet+'<div class="actions">'+btn('Screenshot view',command+',true)',true)+'</div>');
   el('modal').classList.toggle('reportClean',clean);
 }
 function csv(name,rows){
