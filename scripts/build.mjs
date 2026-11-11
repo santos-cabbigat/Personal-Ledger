@@ -5,7 +5,7 @@ const write=(path,content)=>writeFile(new URL(path,root),content);
 const source=await read('docs/index.html'), backend=await read('apps-script/Code.gs');
 const manifest=await read('apps-script/appsscript.json');
 const live=source.replace(/<script>\s*if \(location\.origin[\s\S]*?<\/script>/,'')
-  .replace('<script src="demo.js"></script>','');
+  .replace(/<script src="demo\.js(?:\?[^"]*)?"><\/script>/,'');
 await write('apps-script/Index.html',live);
 const demoPath='docs/demo.js';
 const demo=(await read(demoPath)).split('// Sequence is shared by both books')[0].trimEnd();
