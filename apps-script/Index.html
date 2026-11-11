@@ -235,17 +235,17 @@ function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,ex
   const money=n=>amount(n);
   rect(0,0,width,1230,'#ffffff');
   const grad=ctx.createLinearGradient(0,0,width,250);grad.addColorStop(0,navy);grad.addColorStop(1,violet);rect(0,0,width,235,grad);
-  text('MONTHLY FINANCIAL UPDATE',pad,54,17,700,'#baf4e9');fit(book,pad,130,inner,58,700,'#ffffff');
-  text(periodLabel+(asOf?'   ·   Entries through '+asOf:''),pad,182,23,400,'#eee6ff');
+  text('MONTHLY FINANCIAL REPORT',pad,54,17,700,'#baf4e9');fit(book,pad,130,inner,58,700,'#ffffff');
+  text(periodLabel+(asOf?'   ·   Transactions through '+asOf:''),pad,182,23,400,'#eee6ff');
   rect(0,235,width,7,'#8ad9c9');
   let y=288;
-  text('Money left in the bank',pad,y,24,600,teal);fit(money(opening+received-spent),pad,y+65,inner,62,700,ink);
+  text('Closing bank balance',pad,y,24,600,teal);fit(money(opening+received-spent),pad,y+65,inner,62,700,ink);
   y+=96;rect(pad,y,inner,98,'#e9f6f3');
-  const metrics=[['Bank at start',opening],['Money in',received],['Money out',spent]];
+  const metrics=[['Opening balance',opening],['Bank receipts',received],['Bank payments',spent]];
   metrics.forEach(([label,n],i)=>{const x=pad+18+i*inner/3;text(label,x,y+34,18,400,muted);fit(money(n),x,y+72,inner/3-32,27,700,ink)});
   y+=145;
   const wrap=(value,size,max)=>{font(size);const lines=[];let line='';for(const word of value.split(' ')){if(line&&ctx.measureText(line+' '+word).width>max){lines.push(line);line=word}else line+=(line?' ':'')+word}if(line)lines.push(line);return lines};
-  const summary=openingFunds>0?'Of the money in, '+money(openingFunds)+' was recorded as opening funds.':'The bank started at '+money(opening)+'. Money in less money out gives the balance above.';
+  const summary=openingFunds>0?'Bank receipts include '+money(openingFunds)+' in opening funds brought forward.':'Net change in bank balance for '+periodLabel+'  ·  '+money(received-spent)+'.';
   for(const line of wrap(summary,22,inner)){text(line,pad,y,22,400,muted);y+=30}
   y+=24;
   const detail=(title,total,items,empty)=>{
@@ -265,9 +265,9 @@ function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,ex
     if(g.type==='Income')sources.push([/donat|contrib/i.test(g.name)?'Contributions':g.name,[...g.accounts.values()].reduce((sum,c)=>sum+c,0)/100]);
     else for(const [label,c] of g.accounts)uses.push([label,c/100]);
   }
-  detail('Where the income came from',income,sources,'No income recorded for this period.');
-  detail('What the money was spent on',expense,uses,'No expenses recorded for this period.');
-  rect(pad,y-17,inner,60,'#eee9f8');text('Income less expenses',pad+16,y+21,20,600,violet);
+  detail('Sources of income',income,sources,'No income recorded for this period.');
+  detail('Expenditure by account',expense,uses,'No expenses recorded for this period.');
+  rect(pad,y-17,inner,60,'#eee9f8');text('Surplus / (deficit)',pad+16,y+21,20,600,violet);
   const result=money(income-expense);font(25,700);text(result,width-pad-16-ctx.measureText(result).width,y+22,25,700,violet);
   y+=82;
   text('Amounts in Lao kip',pad,y,16,500,muted);
@@ -308,17 +308,17 @@ function monthlyReport(book,month,clean=false,basis){
   },0);
   const details=[...groups.values()].sort((a,b)=>b.type.localeCompare(a.type)||a.name.localeCompare(b.name)).map(g=>'<h4>'+esc(g.name)+'</h4>'+[...g.accounts].sort((a,b)=>a[0].localeCompare(b[0])).map(([name,c])=>'<div class="rline"><span>'+esc(name)+'</span><b>'+esc(amount(c/100))+'</b></div>').join('')).join('');
   const command='monthlyReport(el(\'monthBook\').value,el(\'monthPeriod\').value';
-  const controls='<div class="monthControls two" '+(clean?'hidden':'')+'>'+field('Book','<select id="monthBook" onchange="'+command+')">'+options(data.books,book)+'</select>')+field('Month','<input id="monthPeriod" type="month" value="'+esc(month)+'" onchange="if(this.value)'+command+')">')+field('Entry status','<select id="monthBasis" onchange="'+command+')">'+options(['All balanced entries','Posted only'],basis)+'</select>')+'</div>';
+  const controls='<div class="monthControls two" '+(clean?'hidden':'')+'>'+field('Ledger book','<select id="monthBook" onchange="'+command+')">'+options(data.books,book)+'</select>')+field('Reporting period','<input id="monthPeriod" type="month" value="'+esc(month)+'" onchange="if(this.value)'+command+')">')+field('Entry status','<select id="monthBasis" onchange="'+command+')">'+options(['All balanced entries','Posted only'],basis)+'</select>')+'</div>';
   const sheet='<article class="statement"><div class="statementHead"><small>MONTHLY FINANCIAL REPORT</small><h2>'+esc(book)+'</h2><p>'+esc(periodLabel)+' · Lao kip</p></div>'+
-    '<section><h3>Bank movement</h3><div class="closing"><span>Money left in the bank</span><strong>'+esc(amount(opening+received-spent))+'</strong></div><div class="metrics">'+metric('Opening balance',opening)+metric('Money in',received)+metric('Money out',spent)+'</div></section>'+
-    '<section><h3>Income &amp; expenses</h3><div class="metrics">'+metric('Income',income)+metric('Expenses',expense)+metric('Income less expenses',income-expense)+'</div></section>'+
-    '<section><h3>Account breakdown</h3>'+(details||'<p>No income or expenses for this selection.</p>')+'</section>'+
+    '<section><h3>Bank balance and activity</h3><div class="closing"><span>Closing bank balance</span><strong>'+esc(amount(opening+received-spent))+'</strong></div><div class="metrics">'+metric('Opening balance',opening)+metric('Bank receipts',received)+metric('Bank payments',spent)+'</div></section>'+
+    '<section><h3>Income and expenditure</h3><div class="metrics">'+metric('Total income',income)+metric('Total expenditure',expense)+metric('Surplus / (deficit)',income-expense)+'</div></section>'+
+    '<section><h3>Income and expenditure by account</h3>'+(details||'<p>No income or expenses for this selection.</p>')+'</section>'+
     '<footer>Posted entries: '+postedCount+(pending?' · '+(basis==='Posted only'?'Balanced drafts excluded: ':'Balanced drafts included: ')+pending:'')+'</footer></article>';
   if(clean){
     const image=makeReportImage({book,periodLabel,asOf:displayDate(latest),opening,received,spent,income,expense,openingFunds,groups,postedCount,pending,basis});
     const file=(book+'-'+month+'-financial-update.png').replace(/[^a-z0-9._-]/gi,'-');
     const actions='<div class="actions"><a class="link" download="'+esc(file)+'" href="'+image+'">Save report image</a>'+btn('Show controls',command+',false)')+'</div>';
-    dialog('Monthly report',controls+'<img class="statementImage" src="'+image+'" alt="Monthly financial update for '+esc(book)+'. Money left in the bank: '+esc(amount(opening+received-spent))+'">'+actions);
+    dialog('Monthly report',controls+'<img class="statementImage" src="'+image+'" alt="Monthly financial report for '+esc(book)+'. Closing bank balance: '+esc(amount(opening+received-spent))+'">'+actions);
   }else dialog('Monthly report',controls+sheet+'<div class="actions">'+btn('Screenshot view',command+',true)',true)+'</div>');
   el('modal').classList.toggle('reportClean',clean);
 }

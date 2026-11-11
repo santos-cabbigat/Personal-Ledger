@@ -126,7 +126,7 @@ function buildMonthSheet_(sheet,initialBook){
   const band=(a,text,color)=>merge(a).setValue(text).setBackground(color).setFontColor('#ffffff').setFontWeight('bold');
   band('A1:D1','MONTHLY FINANCIAL REPORT',navy).setFontSize(18);tab.setRowHeight(1,49);
   merge('A2:D2').setFormula('=A4&"  /  "&TEXT(C4,"mmmm yyyy")&"  /  Lao kip"').setBackground(violet).setFontColor('#ffffff').setFontSize(13);tab.setRowHeight(2,32);
-  tab.getRange('A3:D3').setValues([['Book','','Reporting month','Basis']]).setFontColor(violet).setFontWeight('bold');
+  tab.getRange('A3:D3').setValues([['Ledger book','','Reporting period','Entry status']]).setFontColor(violet).setFontWeight('bold');
   merge('A4:B4');tab.getRange('A4').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(sheet.getSheetByName('Settings').getRange('F2:F'),true).setAllowInvalid(false).build());
   tab.getRange('C4').setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build()).setNumberFormat('mmm yyyy').setNote('Choose any date in the month to report.');
   if(first){tab.getRange('A4').setValue(initialBook);tab.getRange('C4').setValue(Math.round(Date.parse(date_(new Date()).slice(0,7)+'-01')/86400000)+25569);}
@@ -135,18 +135,18 @@ function buildMonthSheet_(sheet,initialBook){
   if(!['All balanced entries','Posted only'].includes(basis.getDisplayValue()))basis.setValue('All balanced entries');
   tab.getRange('A4:D4').setBackground(pale).setFontWeight('bold');tab.setRowHeight(4,32);
   const sum=(col,when,filter,value)=>'SUMIFS('+source+col+'2:'+col+','+source+'A2:A,$A$4,'+source+'N2:N,IF($D$4="Posted only","Posted","<>Review"),'+source+'E2:E,"' + (when==='prior'?'<':'<=') + '"&'+(when==='prior'?'(EOMONTH($C$4,-1)+1)':'EOMONTH($C$4,0)')+(when==='month'?','+source+'E2:E,">"&EOMONTH($C$4,-1)':'')+','+source+filter+'2:'+filter+',"'+value+'")';
-  merge('A5:D5').setFormula('="After money in and money out, "&A4&" has ₭"&TEXT(D8,"#,##0")&" in the bank."').setFontColor(ink).setFontSize(11).setWrap(true);
+  merge('A5:D5').setFormula('="Net change in bank balance for "&TEXT(C4,"mmmm yyyy")&"  ·  ₭"&TEXT(B8-C8,"#,##0;(#,##0);0")').setFontColor(ink).setFontSize(11).setWrap(true);
   tab.setRowHeight(5,42);
-  band('A6:D6','MONEY IN THE BANK',navy);
-  tab.getRange('A7:D7').setValues([['Bank at start','Money in','Money out','Money left in the bank']]).setFontColor(violet).setFontWeight('bold');
+  band('A6:D6','BANK BALANCE AND ACTIVITY',navy);
+  tab.getRange('A7:D7').setValues([['Opening balance','Bank receipts','Bank payments','Closing bank balance']]).setFontColor(violet).setFontWeight('bold');
   tab.getRange('A8:D8').setFormulas([['='+sum('I','prior','M','Bank')+'-'+sum('J','prior','M','Bank'),'='+sum('I','month','M','Bank'),'='+sum('J','month','M','Bank'),'=A8+B8-C8']]).setBackground('#e9f6f4').setFontSize(15).setFontWeight('bold');tab.getRange('D8').setBackground(aqua);tab.setRowHeight(8,39);
-  band('A10:D10','INCOME AND SPENDING',navy);
-  tab.getRange('A11:D11').setValues([['Income','Expenses','Income less expenses','Entries included']]).setFontColor(violet).setFontWeight('bold');
+  band('A10:D10','INCOME AND EXPENDITURE',navy);
+  tab.getRange('A11:D11').setValues([['Total income','Total expenditure','Surplus / (deficit)','Journal entries']]).setFontColor(violet).setFontWeight('bold');
   const count='COUNTUNIQUEIFS('+source+'F2:F,'+source+'A2:A,$A$4,'+source+'E2:E,">"&EOMONTH($C$4,-1),'+source+'E2:E,"<="&EOMONTH($C$4,0),'+source+'F2:F,"<>",'+source+'N2:N,';
   tab.getRange('A12:D12').setFormulas([['='+sum('J','month','D','Income')+'-'+sum('I','month','D','Income'),'='+sum('I','month','D','Expense')+'-'+sum('J','month','D','Expense'),'=A12-B12','='+count+'IF($D$4="Posted only","Posted","<>Review"))']]).setBackground(pale).setFontSize(15).setFontWeight('bold');tab.setRowHeight(12,38);
   merge('A14:D14').setFormula('='+count+'"Posted")&" posted   ·   "&'+count+'"Balanced draft")&IF($D$4="Posted only"," balanced drafts excluded"," balanced drafts included")&"   ·   "&'+count+'"Review")&" need review"').setFontSize(10).setFontColor(violet);
-  band('A16:D16','WHERE THE INCOME CAME FROM AND WHAT IT PAID FOR',navy);
-  tab.getRange('A17:D17').setValues([['Classification','Parent account','Account','Amount (LAK)']]).setFontWeight('bold').setBackground(pale);
+  band('A16:D16','INCOME AND EXPENDITURE BY ACCOUNT',navy);
+  tab.getRange('A17:D17').setValues([['Account class','Account group','Account name','Amount (LAK)']]).setFontWeight('bold').setBackground(pale);
   tab.getRange('A18').setFormula('=IFNA(LET(lines,FILTER('+source+'A2:O,'+source+'A2:A=$A$4,'+source+'N2:N<>"Review",IF($D$4="Posted only",'+source+'N2:N="Posted",'+source+'N2:N<>""),'+source+'E2:E>EOMONTH($C$4,-1),'+source+'E2:E<=EOMONTH($C$4,0),(('+source+'D2:D="Income")+('+source+'D2:D="Expense"))>0),typ,CHOOSECOLS(lines,4),parts,HSTACK(typ,CHOOSECOLS(lines,15,3),ARRAYFORMULA(IF(typ="Income",CHOOSECOLS(lines,10)-CHOOSECOLS(lines,9),CHOOSECOLS(lines,9)-CHOOSECOLS(lines,10)))),QUERY(parts,"select Col1,Col2,Col3,sum(Col4) group by Col1,Col2,Col3 order by Col1 desc,Col2,Col3 label Col1 \'\',Col2 \'\',Col3 \'\',sum(Col4) \'\'",0)),"No income or expenses for this selection")');
   for(const addr of ['A8:D8','A12:C12','D18:D'])tab.getRange(addr).setNumberFormat('#,##0.##;[Red](#,##0.##);0');
   tab.getRange('A18:C').setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);tab.setRowHeights(6,2,28);tab.setRowHeight(10,28);tab.setRowHeight(16,28);
