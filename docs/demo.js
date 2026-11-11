@@ -9,11 +9,11 @@ const demoAccounts = [
 const sampleDay = offset=>new Date(Date.now()+7*3600000-offset*86400000).toISOString().slice(0,10);
 const previewData={title:'Personal & Business Ledger',owner:true,books:['Personal','Business'],ledgerId:'demo',accounts:demoAccounts,entries:[],today:sampleDay(0)};
 const savedKeys=new Map();
-function recordSample(id,date,book,memo,lines,project='',revision=id,category=''){
+function recordSample(id,date,book,memo,lines,project='',revision=id,category='',reference=''){
  const records=lines.map(l=>{
    const a=previewData.accounts.find(a=>a.code===l.code&&a.use==='Posting');
    if(!a)throw Error('Choose a posting account.');
-   return {id,date,book,memo,project,category,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
+   return {id,date,book,memo,lineMemo:l.lineMemo||memo,reference:l.reference||reference,project,category,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
  });
  previewData.entries.push(...records);
 }
@@ -31,7 +31,7 @@ async function previewCall(action,input){
    const id=input.editId||nextEntryId_(input.date,previewData.entries.map(r=>r.id));
    const old=previewData.entries.filter(r=>r.id===id);
    if(input.editId && (!old.length || old[0].revision!==input.revision)) throw Error('Refresh and reopen this entry.');
-   recordSample(id,input.date,input.book,input.memo,input.lines,input.project,input.key,input.category);
+   recordSample(id,input.date,input.book,input.memo,input.lines,input.project,input.key,input.category,input.reference);
    previewData.entries=previewData.entries.filter(r=>!old.includes(r));
    savedKeys.set(input.key,id);return id;
  }

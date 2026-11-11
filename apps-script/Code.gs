@@ -33,6 +33,8 @@ function page_(activeSheet) {
 }
 const LEDGER_NAME = 'Personal & Business Ledger';
 const JOURNAL_HEADERS = ['Entry ID','Date','Book','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Posted at','Request ID','Project','Edit request ID','Category'];
+// Journal columns P and Q are an ID lookup. R stores an external receipt or bank reference.
+const REFERENCE_COLUMN = 18;
 const ACCOUNT_HEADERS = ['Code','Account name','Classification','Parent code','Use'];
 function signedIn_() {
   const email = Session.getActiveUser().getEmail().toLowerCase();
@@ -67,6 +69,7 @@ function openExistingLedger(url) {
   const sheet = SpreadsheetApp.openById(match[1]);
   schema_(sheet);
   if(sheet.getSheetByName('Settings').getRange('F1').getDisplayValue()!=='Book types')setupBookPickers_(sheet);
+  ensureJournalPresentation_(sheet);
   PropertiesService.getUserProperties().setProperty('ACTIVE_LEDGER',sheet.getId());
   return true;
 }
@@ -110,11 +113,10 @@ function bookPickerRequests_(journalId,settingsId,seedBooks){
       userEnteredValue:value.startsWith('=')?{formulaValue:value}:{stringValue:value}
     }))})),fields:'userEnteredValue'}});
   }
-  put(settingsId,0,5,[['Book types','Posted entry IDs','Projects','Categories']]);
+  put(settingsId,0,5,[['Book types','Journal entry IDs','Projects','Categories']]);
   if(seedBooks)put(settingsId,1,5,DEFAULT_BOOKS.map(name=>[name]));
   const distinct=col=>'=IFERROR(SORT(UNIQUE(FILTER(Journal!'+col+'2:'+col+',Journal!'+col+'2:'+col+'<>""))),"")';
-  const postedIds='=IFERROR(SORT(UNIQUE(FILTER(Journal!A2:A,Journal!A2:A<>"",((Journal!J2:J<>"")+(Journal!L2:L<>""))>0))),"")';
-  put(settingsId,1,6,[[postedIds,distinct('M'),distinct('O')]]);
+  put(settingsId,1,6,[[distinct('A'),distinct('M'),distinct('O')]]);
   put(journalId,0,14,[['Category','Find entry ID','Journal row']]);
   put(journalId,1,16,[['=IF(P2="","",IFERROR(HYPERLINK("#gid='+journalId+'&range=A"&MATCH(P2,A:A,0),"Open row "&MATCH(P2,A:A,0)),""))']]);
   function dropdown(col,source,help,endRowIndex,strict){
@@ -131,12 +133,45 @@ function bookPickerRequests_(journalId,settingsId,seedBooks){
 function setupBookPickers_(sheet){
   const journal=sheet.getSheetByName('Journal'),settings=sheet.getSheetByName('Settings');
   const current=settings.getRange('F1:I1').getDisplayValues()[0];
-  const labels=['Book types','Posted entry IDs','Projects','Categories'];
+  const labels=['Book types','Journal entry IDs','Projects','Categories'];
   const target=journal.getRange('O1:Q1').getDisplayValues()[0];
-  if(current.some((name,i)=>name && name!==labels[i]) || target.some((name,i)=>name && name!==['Category','Find entry ID','Journal row'][i]))
+  if(current.some((name,i)=>name && name!==labels[i] && !(i===1 && name==='Posted entry IDs')) || target.some((name,i)=>name && name!==['Category','Find entry ID','Journal row'][i]))
     throw Error('The ledger needs empty or matching headers in Settings F:I and Journal O:Q.');
   const seed=!current[0] && settings.getRange('F2:F3').isBlank();
   Sheets.Spreadsheets.batchUpdate({requests:bookPickerRequests_(journal.getSheetId(),settings.getSheetId(),seed)},sheet.getId());
+}
+function journalPresentationRequests_(sheetId) {
+  const rowHasData=c=>['A','B','C','D','E','F','H','I','R'].map(col=>'$'+col+c+'<>""').join(',');
+  const emptyRow=['B','C','D','E','F','H','I','R'].map(col=>'INDEX('+col+':'+col+',n)=""').join(',');
+  const running='=SCAN(0,SEQUENCE(ROWS(A2:A),1,2),LAMBDA(b,n,IF(OR(INDEX(A:A,n)<>"",AND('+emptyRow+')),0,ROUND(b+N(INDEX(H:H,n))-N(INDEX(I:I,n)),2))))';
+  const starts='=AND(OR('+rowHasData(2)+'),OR(ROW()=2,$A2<>$A1,AND($A2="",OR(NOT(OR('+rowHasData(1)+')),AND($S1=0,OR(N($H1)>0,N($I1)>0))))))';
+  return [
+    {updateCells:{start:{sheetId,rowIndex:0,columnIndex:17},rows:[{values:[
+      {userEnteredValue:{stringValue:'Reference'},note:'Optional receipt or bank transfer number. Each journal line can have its own reference.'},
+      {userEnteredValue:{stringValue:'Draft running balance'}}]}],fields:'userEnteredValue,note'}},
+    {updateCells:{start:{sheetId,rowIndex:1,columnIndex:18},rows:[{values:[{userEnteredValue:{formulaValue:running}}]}],fields:'userEnteredValue'}},
+    {repeatCell:{range:{sheetId,startRowIndex:1,startColumnIndex:17,endColumnIndex:18},cell:{userEnteredFormat:{numberFormat:{type:'TEXT'}}},fields:'userEnteredFormat.numberFormat'}},
+    {updateDimensionProperties:{range:{sheetId,dimension:'COLUMNS',startIndex:18,endIndex:19},properties:{hiddenByUser:true},fields:'hiddenByUser'}},
+    {updateDimensionProperties:{range:{sheetId,dimension:'COLUMNS',startIndex:17,endIndex:18},properties:{pixelSize:170},fields:'pixelSize'}},
+    {addConditionalFormatRule:{index:0,rule:{ranges:[
+      {sheetId,startRowIndex:1,startColumnIndex:0,endColumnIndex:15},
+      {sheetId,startRowIndex:1,startColumnIndex:17,endColumnIndex:18}],
+      booleanRule:{condition:{type:'CUSTOM_FORMULA',values:[{userEnteredValue:starts}]},format:{backgroundColor:{red:0.78,green:0.88,blue:0.96},textFormat:{bold:true}}}}}}
+  ];
+}
+function ensureJournalPresentation_(sheet) {
+  const journal=sheet.getSheetByName('Journal');
+  const labels=journal.getRange('R1:S1').getDisplayValues()[0];
+  if(labels[0]==='Reference' && labels[1]==='Draft running balance')return;
+  if(!journal.getRange('R:S').isBlank())throw Error('Columns R and S are already in use. Check them before adding Reference.');
+  const requests=journalPresentationRequests_(journal.getSheetId());
+  Sheets.Spreadsheets.batchUpdate({requests},sheet.getId());
+}
+function journalRows_(sheet) {
+  // Ignore the search controls in P/Q even if someone is using the ID picker.
+  const rows=rows_(sheet,'Journal',REFERENCE_COLUMN).map(row=>[...row.slice(0,15),row[17]??'']);
+  while(rows.length && rows[rows.length-1].every(value=>value===''))rows.pop();
+  return rows;
 }
 function journalRules_(journalId,settingsId,firstBlank,rowCount) {
   const requests=[];
@@ -174,7 +209,7 @@ function setupJournal_(sheet) {
   const existing=settings.getRange('D1:E2').getDisplayValues()[0];
   if((existing[0] && existing[0]!=='Posting account codes')||(existing[1] && existing[1]!=='Posting account names'))
     throw Error('Settings columns D and E are already in use.');
-  const used=rows_(sheet,'Journal',JOURNAL_HEADERS.length);
+  const used=journalRows_(sheet);
   const requests=journalRules_(journal.getSheetId(),settings.getSheetId(),used.length+1,journal.getMaxRows());
   Sheets.Spreadsheets.batchUpdate({requests},sheet.getId());
 }
@@ -193,7 +228,7 @@ function onEdit(e){
     const matched=editName || (!editCode && !code) ? chart.filter(a=>a.name===String(name)) : chart.filter(a=>a.code===String(code));
     if(matched.length!==1 || (!editName&&!editCode && code && name && matched[0].name!==String(name)))continue;
     const account=matched[0];
-    if(editName && !formulas[i][0])tab.getRange(n,5).setValue(account.code);
+    if(editName && !formulas[i][0])tab.getRange(n,5).setValue(account.sheetCode??account.code);
     if(!editName && String(name)!==account.name)tab.getRange(n,6).setValue(account.name);
     if(!formulas[i][2] && values[i][2]!==account.type)tab.getRange(n,7).setValue(account.type);
   }
@@ -201,7 +236,7 @@ function onEdit(e){
 function postSelectedJournalEntry(){
   const sheet=SpreadsheetApp.getActiveSpreadsheet(), range=sheet.getActiveRange();
   if(range.getSheet().getName()!=='Journal'||range.getRow()<2)throw Error('Select a transaction row in Journal first.');
-  const raw=rows_(sheet,'Journal',JOURNAL_HEADERS.length);
+  const raw=journalRows_(sheet);
   const target=[...journalGroups_(raw)].find(([,items])=>items.some(item=>item.number===range.getRow()));
   if(!target)throw Error('Select a row with a journal entry.');
   const view=journalState_(sheet,accounts_(sheet));
@@ -236,6 +271,7 @@ function setupNewBook_(sheet) {
   schema_(sheet);
   setupJournal_(sheet);
   setupBookPickers_(sheet);
+  ensureJournalPresentation_(sheet);
 }
 function connectPersonalDrive() {
   const email = signedIn_(), lock=LockService.getUserLock();
@@ -271,7 +307,7 @@ function date_(value) {
   return value instanceof Date ? Utilities.formatDate(value,'Asia/Vientiane','yyyy-MM-dd') : String(value);
 }
 function accounts_(sheet) {
-  return rows_(sheet,'Accounts',5).filter(r=>r[0] !== '').map(r=>({code:String(r[0]), name:String(r[1]),type:String(r[2]),parent:String(r[3]),use:String(r[4])}));
+  return rows_(sheet,'Accounts',5).filter(r=>r[0] !== '').map(r=>({code:String(r[0]),sheetCode:r[0], name:String(r[1]),type:String(r[2]),parent:String(r[3]),use:String(r[4])}));
 }
 function revision_(rows) {
   return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,JSON.stringify(rows)));
@@ -300,7 +336,7 @@ function journalState_(sheet, accounts) {
   const warnings=[];
   const chart = new Map(accounts.map(a=>[a.code,a]));
   const tz=sheet.getSpreadsheetTimeZone(),books=bookNames_(sheet);
-  const groups=journalGroups_(rows_(sheet,'Journal',JOURNAL_HEADERS.length));
+  const groups=journalGroups_(journalRows_(sheet));
   const entries=[];
   for (const [groupKey,group] of groups) {
     const id=String(group[0].row[0]).trim();
@@ -312,9 +348,11 @@ function journalState_(sheet, accounts) {
         if(values.length>1) throw Error('Use the same date, book, description, project and category on the lines of one entry.');
         return values[0] || '';
       };
-      const date=shared(1), book=shared(2), memo=shared(3), project=shared(12), category=shared(14);
+      const date=shared(1), book=shared(2), memo=String(rows.find(r=>String(r[3]??'').trim())?.[3]||'').trim(), project=shared(12), category=shared(14);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10)!==date || !book || !memo) throw Error('Fill in the date, book and description.');
       if (!books.includes(book) && !rows.some(r=>r[0] && (r[9] || r[11]))) throw Error('Choose a book listed in Settings.');
+      const draftRows=rows.filter(r=>!r[9] && !r[11]).length;
+      if(draftRows && draftRows!==rows.length)throw Error('This ID includes posted and unposted lines. Give the new transaction its own ID.');
       let debitCents=0,creditCents=0;
       const version=revision_(rows);
       const lines=rows.map(r=>{
@@ -326,7 +364,7 @@ function journalState_(sheet, accounts) {
         const debit=cents_(r[7]),credit=cents_(r[8]);
         if((debit>0)===(credit>0)) throw Error('Each line needs one debit or credit.');
         debitCents+=debit;creditCents+=credit;
-        return {id:id||('Sheet rows '+group[0].number+'–'+group[group.length-1].number),groupKey,date,book,memo,project,category,code,name:String(r[5]||a.name),type:String(r[6]||a.type),
+        return {id:id||('Sheet rows '+group[0].number+'–'+group[group.length-1].number),groupKey,date,book,memo,lineMemo:String(r[3]||'').trim(),reference:String(r[15]??'').trim(),project,category,code,name:String(r[5]||a.name),type:String(r[6]||a.type),
           debit:debit/100,credit:credit/100,by:String(r[9]),sheetDraft:rows.every(item=>!item[9]&&!item[11]),revision:version};
       });
       if (debitCents!==creditCents || new Set(lines.map(l=>l.code)).size<2) throw Error('Balance the debit and credit lines across at least two accounts.');
@@ -394,7 +432,10 @@ function makeLines_(sheet,input,id,posted,originalBook) {
     const account=accounts.get(String(line.code)),dr=cents_(line.debit),cr=cents_(line.credit);
     if (!account || ((dr>0)===(cr>0))) throw Error('Choose a posting account and one debit or credit per line.');
     used.add(account.code); debits+=dr; credits+=cr;
-    return [id,date,input.book,memo,account.code,account.name,account.type,dr/100,cr/100,...posted,project,input.editId ? input.key : '',category];
+    const lineMemo=line.lineMemo ? text_(line.lineMemo,180) : memo;
+    const reference=String(line.reference||input.reference||'').trim();
+    if(reference.length>180)throw Error('Use a reference of up to 180 characters.');
+    return [id,date,input.book,lineMemo,account.sheetCode??account.code,account.name,account.type,dr/100,cr/100,...posted,project,input.editId ? input.key : '',category,reference];
   });
   if (used.size<2 || debits!==credits) throw Error('Balance debits and credits across at least two accounts.');
   return rows;
@@ -429,8 +470,9 @@ function postWithContext_(input,{sheet,email}) {
   return lock_(()=>{
     const journal=sheet.getSheetByName('Journal');
     checkLedger_(sheet,input.ledgerId);
+    ensureJournalPresentation_(sheet);
     if (!/^[a-f0-9-]{36}$/i.test(String(input.key))) throw Error('Missing posting reference.');
-    const rows=rows_(sheet,'Journal',JOURNAL_HEADERS.length);
+    const rows=journalRows_(sheet);
     const header=journal.getRange(1,13,1,3).getDisplayValues()[0];
     if(header.some((v,i)=>v && v!==JOURNAL_HEADERS[12+i])) throw Error('Check the Project, Edit request ID and Category headers in Journal.');
     const sheetId=journal.getSheetId(), requests=[];
@@ -453,23 +495,34 @@ function postWithContext_(input,{sheet,email}) {
     }
     const original=rows[positions[0]];
     const sheetPosting=edit && (!original[0] || positions.every(i=>!rows[i][9] && !rows[i][11]));
-    const id=(!edit || sheetPosting) ? nextEntryId_(input.date,rows.map(row=>row[0])) : target;
+    let id;
+    if(sheetPosting && original[0]){
+      id=String(original[0]).trim();
+      const prefix=String(input.date).slice(2,4)+String(input.date).slice(5,7)+'-'+String(input.date).slice(8);
+      if(!id.startsWith(prefix) || !/^[A-Z]+(?!000$)\d{3}$/.test(id.slice(prefix.length)))
+        throw Error('The manual ID must match the transaction date and sequence, or you can clear it in the Sheet for automatic numbering.');
+    }else id=edit && !sheetPosting ? target : nextEntryId_(input.date,rows.map(row=>String(row[0]).trim()));
     const posted=edit && !sheetPosting ? [original[9],original[10] instanceof Date ? original[10].toISOString() : original[10],original[11]] :
       [email,new Date().toISOString(),input.key];
     const values=makeLines_(sheet,input,id,posted,edit && !sheetPosting ? original[2] : null);
     // Use a native Sheet date so the calendar and the date validation also work on app posts.
     values.forEach(row=>row[1]=Math.round(Date.parse(input.date)/86400000)+25569);
     const common=Math.min(positions.length,values.length);
-    for(let i=0;i<common;i++) requests.push(update(positions[i]+1,0,[values[i]]));
+    function writeLines(index,lines){
+      requests.push(update(index,0,lines.map(row=>row.slice(0,15))));
+      requests.push(update(index,REFERENCE_COLUMN-1,lines.map(row=>[row[15]])));
+    }
+    for(let i=0;i<common;i++)writeLines(positions[i]+1,[values[i]]);
     for(let i=common;i<positions.length;i++){
       requests.push({repeatCell:{range:{sheetId,startRowIndex:positions[i]+1,endRowIndex:positions[i]+2,startColumnIndex:0,endColumnIndex:JOURNAL_HEADERS.length},
         cell:{},fields:'userEnteredValue'}});
+      requests.push(update(positions[i]+1,REFERENCE_COLUMN-1,[['']]));
     }
     if(common<values.length){
       const extra=values.slice(common);
       const required=rows.length+1+extra.length-journal.getMaxRows();
       if(required>0)requests.push({appendDimension:{sheetId,dimension:'ROWS',length:required}});
-      requests.push(update(rows.length+1,0,extra));
+      writeLines(rows.length+1,extra);
     }
     Sheets.Spreadsheets.batchUpdate({requests},sheet.getId());
     return id;

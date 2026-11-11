@@ -18,11 +18,16 @@ function fixture() {
       const convert=row=>row.values.map(c=>Object.values(c.userEnteredValue)[0]);
       for(const req of requests){
         if(req.appendCells)raw.push(...req.appendCells.rows.map(convert));
-        if(req.updateCells)req.updateCells.rows.forEach((row,i)=>raw[req.updateCells.start.rowIndex-1+i]=convert(row));
+        if(req.updateCells)req.updateCells.rows.forEach((row,i)=>{
+          const start=req.updateCells.start, at=start.rowIndex-1+i;
+          raw[at]??=Array(18).fill('');
+          convert(row).forEach((v,j)=>raw[at][start.columnIndex+j]=v);
+        });
         if(req.repeatCell)raw[req.repeatCell.range.startRowIndex-1]=Array(14).fill('');
       }
     }}}});
   vm.runInContext(source,context);
+  context.ensureJournalPresentation_=()=>{};
   context.context_=()=>({email:'poster@example.org',sheet:book});
   context.accounts_=()=>accounts;context.rows_=()=>raw;
   context.bookNames_=()=>['Personal','Business','Family'];
@@ -121,4 +126,16 @@ test('Sheet pickers reference the book list, posted IDs, projects and categories
   const settings=requests.filter(r=>r.updateCells?.start.sheetId===321);
   assert.ok(settings.some(r=>r.updateCells.rows.some(row=>row.values[0].userEnteredValue.stringValue==='Business')));
   assert.ok(requests.some(r=>r.updateCells?.rows[0].values[0].userEnteredValue.formulaValue?.includes('MATCH(P2,A:A,0)')));
+});
+
+test('a manually assigned ID, split receipts and different line descriptions survive posting',()=>{
+  const {api,book,raw}=fixture(), date='2026-11-11', id='2611-11A004';
+  const row=(memo,code,dr,cr,ref)=>[id,date,'Family',memo,code,'','',dr,cr,'','','','','','','picker','jump',ref];
+  raw.push(row('Bank transfer','1100',1000,0,'000782'),row('Contribution','5100',0,1000,''));
+  const {entries,warnings}=api.journalState_(book,accounts);
+  assert.equal(warnings.length,0);assert.equal(entries.length,2);assert.equal(entries[0].sheetDraft,true);
+  const edit={...draft(),book:'Family',editId:id,groupKey:entries[0].groupKey,revision:entries[0].revision,lines:entries};
+  assert.equal(api.postEntry(edit),id);assert.deepEqual(raw.map(r=>r[3]),['Bank transfer','Contribution']);
+  assert.equal(raw[0][17],'000782');assert.equal(raw[0][15],'picker');assert.equal(raw[1][16],'jump');
+  assert.equal(api.postEntry(draft()),'2611-11A005');assert.equal(raw[0][9],'poster@example.org');
 });
