@@ -13,7 +13,7 @@ function recordSample(id,date,book,memo,lines,project='',revision=id,category=''
  const records=lines.map(l=>{
    const a=previewData.accounts.find(a=>a.code===l.code&&a.use==='Posting');
    if(!a)throw Error('Choose a posting account.');
-   return {id,date,book,memo,lineMemo:l.lineMemo||memo,reference:l.reference||reference,project,category,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
+   return {id,date,book,memo,lineMemo:l.lineMemo||memo,reference:String(l.reference||reference||'').toUpperCase(),project,category,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
  });
  previewData.entries.push(...records);
 }

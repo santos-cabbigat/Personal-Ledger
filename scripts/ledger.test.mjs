@@ -173,3 +173,25 @@ test('preselected lines split at the balancing row and backdated provisional IDs
   assert.equal(groups.length,2);assert.equal(groups[0].id,'2611-09A001');assert.equal(groups[0].balanced,true);
   assert.equal(groups[1].id,'2611-11A002');assert.equal(groups[1].balanced,false);
 });
+test('separate book tabs supply the book, share the sequence and preserve references when moving an entry',()=>{
+  const {api}=fixture(),tabs=[],book={getId:()=>'ledger',getSpreadsheetTimeZone:()=>'Asia/Vientiane',getSheetByName:n=>tabs.find(t=>t.getName()===n)||null};
+  for(const [i,name] of ['Family','Business'].entries()){
+    const raw=[];
+    tabs.push({raw,getSheetId:()=>i+11,getName:()=>name,getLastRow:()=>raw.length+1,getMaxRows:()=>1000,
+      getRange:(r,c,n,w)=>({getDisplayValue:()=>'Description',getDisplayValues:()=>[['Project','Edit request ID','Category']],
+        getValues:()=>raw.map(row=>Array.from({length:w},(_,j)=>row[j]??''))})});
+  }
+  api.context_=()=>({sheet:book,email:'owner@example.org'});api.bookTabs_=()=>tabs;
+  api.Sheets.Spreadsheets.batchUpdate=({requests})=>{for(const req of requests){
+    if(req.updateCells){const {start,rows}=req.updateCells,tab=tabs.find(t=>t.getSheetId()===start.sheetId);
+      rows.forEach((r,i)=>{const at=start.rowIndex-1+i;tab.raw[at]??=[];r.values.forEach((v,j)=>tab.raw[at][start.columnIndex+j]=Object.values(v.userEnteredValue)[0]);});}
+    if(req.repeatCell){const {range}=req.repeatCell,rr=tabs.find(t=>t.getSheetId()===range.sheetId).raw[range.startRowIndex-1];rr.fill('',0,range.endColumnIndex);}
+  }};
+  const id=api.postEntry({...draft(),book:'Family',reference:'000ab45'});assert.equal(id,'2611-11A001');
+  assert.equal(tabs[0].raw[0][2],'Supplies');assert.equal(tabs[0].raw[0][16],'000AB45');assert.equal(tabs[1].raw.length,0);
+  assert.equal(api.postEntry({...draft(),book:'Business'}),'2611-11A002');
+  let state=api.journalState_(book,accounts);assert.deepEqual([...new Set(state.entries.map(r=>r.book))],['Family','Business']);
+  const old=state.entries.find(r=>r.id===id);
+  assert.equal(api.postEntry({...draft(),book:'Business',sourceBook:'Family',editId:id,groupKey:old.groupKey,revision:old.revision,reference:'007'}),id);
+  state=api.journalState_(book,accounts);assert.equal(state.entries.filter(r=>r.id===id).length,2);assert.ok(state.entries.filter(r=>r.id===id).every(r=>r.book==='Business'&&r.reference==='007'));
+});
