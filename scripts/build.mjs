@@ -13,7 +13,7 @@ const demo=(await read(demoPath)).split('// Sequence is shared by both books')[0
 const sequence=backend.slice(backend.indexOf('// Sequence is shared by both books'),backend.indexOf('function postEntry(input) {'));
 await write(demoPath,demo+'\n\n'+sequence.trimEnd()+'\n');
 const single=backend.replace("properties.getProperty('LEDGER_ID')","properties.getProperty('LEDGER_ID') || '__WORKBOOK__'")
-  .replace("HtmlService.createHtmlOutputFromFile('Index')",'HtmlService.createHtmlOutput(LEDGER_HTML_)')+
+  .replace("HtmlService.createHtmlOutputFromFile('Index').getContent()",'LEDGER_HTML_')+
   '\n'+reporting+'\nconst LEDGER_HTML_ = '+JSON.stringify(live)+';\n';
 const js=value=>JSON.stringify(value).replaceAll('<','\\u003c');
 const installer=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

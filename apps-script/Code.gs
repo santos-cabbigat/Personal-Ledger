@@ -14,22 +14,28 @@ function initializeLedger() {
 const TYPES = ['Asset','Liability','Equity','Income','Expense'];
 const DEFAULT_BOOKS = ['Personal','Business'];
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addItem('Enable my Sheet posting','enableMySheetPosting').addItem('Post selected journal entry','postSelectedJournalEntry').addToUi();
+  SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addItem('Monthly financial report','openMonthlyFinancialReport').addItem('Enable my Sheet posting','enableMySheetPosting').addItem('Post selected journal entry','postSelectedJournalEntry').addToUi();
 }
 function openLedger() {
   rememberSheetPoster_();
   SpreadsheetApp.getUi().showSidebar(page_(SpreadsheetApp.getActiveSpreadsheet()).setTitle('Ledger'));
 }
+function openMonthlyFinancialReport(){
+  const sheet=SpreadsheetApp.getActiveSpreadsheet();
+  SpreadsheetApp.getUi().showModalDialog(page_(sheet,true).setWidth(710).setHeight(750),'Monthly financial report');
+}
 function doGet() { return page_(); }
-function page_(activeSheet) {
-  const html=HtmlService.createHtmlOutputFromFile('Index');
+function page_(activeSheet,openReport) {
+  const source=HtmlService.createHtmlOutputFromFile('Index').getContent();
   // Load the signed-in user's initial view in the same invocation that serves the page.
   // Refreshes and edits still read the live workbook.
   let initial;
-  try { initial=activeSheet ? workbookState_(activeSheet,signedIn_()) : state(); }
+  try { initial=activeSheet ? workbookState_(SpreadsheetApp.openById(activeSheet.getId()),signedIn_()) : state(); }
   catch(error) { initial={loadError:String(error.message||error)}; }
   const encoded=JSON.stringify(initial).replace(/</g,'\\u003c');
-  html.setContent(html.getContent().replace('<!--ledger-state-->',()=>'<script type="application/json" id="initialLedger">'+encoded+'</script>'));
+  const content=source.replace('const serverLedger = null;',()=> 'const serverLedger = '+encoded+';')
+    .replace('const showMonthOnOpen = false;',()=> 'const showMonthOnOpen = '+Boolean(openReport)+';');
+  const html=HtmlService.createHtmlOutput(content);
   return html.setTitle('Shared ledger').addMetaTag('viewport','width=device-width, initial-scale=1, viewport-fit=cover');
 }
 const LEDGER_NAME = 'Personal & Business Ledger';
