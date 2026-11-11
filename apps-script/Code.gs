@@ -14,9 +14,10 @@ function initializeLedger() {
 const TYPES = ['Asset','Liability','Equity','Income','Expense'];
 const DEFAULT_BOOKS = ['Personal','Business'];
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addItem('Post selected journal entry','postSelectedJournalEntry').addToUi();
+  SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addItem('Enable my Sheet posting','enableMySheetPosting').addItem('Post selected journal entry','postSelectedJournalEntry').addToUi();
 }
 function openLedger() {
+  rememberSheetPoster_();
   SpreadsheetApp.getUi().showSidebar(page_(SpreadsheetApp.getActiveSpreadsheet()).setTitle('Ledger'));
 }
 function doGet() { return page_(); }
@@ -142,9 +143,11 @@ function setupBookPickers_(sheet){
 }
 function journalPresentationRequests_(sheetId) {
   const rowHasData=c=>['A','B','C','D','E','F','H','I','R'].map(col=>'$'+col+c+'<>""').join(',');
-  const emptyRow=['B','C','D','E','F','H','I','R'].map(col=>'INDEX('+col+':'+col+',n)=""').join(',');
-  const running='=SCAN(0,SEQUENCE(ROWS(A2:A),1,2),LAMBDA(b,n,IF(OR(INDEX(A:A,n)<>"",AND('+emptyRow+')),0,ROUND(b+N(INDEX(H:H,n))-N(INDEX(I:I,n)),2))))';
+  const emptyRow=['B','C','D','E','F','H','I','R'].map(col=>'INDEX('+col+':'+col+',rownum)=""').join(',');
+  const running='=SCAN(0,SEQUENCE(ROWS(A2:A),1,2),LAMBDA(b,rownum,IF(OR(INDEX(A:A,rownum)<>"",AND('+emptyRow+')),0,ROUND(b+N(INDEX(H:H,rownum))-N(INDEX(I:I,rownum)),2))))';
   const starts='=AND(OR('+rowHasData(2)+'),OR(ROW()=2,$A2<>$A1,AND($A2="",OR(NOT(OR('+rowHasData(1)+')),AND($S1=0,OR(N($H1)>0,N($I1)>0))))))';
+  const next='=AND(NOT(OR('+rowHasData(2)+')),OR(ROW()=2,AND($A1<>"",COUNTIF($A$2:$A,$A1)>=2,SUMIF($A$2:$A,$A1,$H$2:$H)>0,ROUND(SUMIF($A$2:$A,$A1,$H$2:$H)-SUMIF($A$2:$A,$A1,$I$2:$I),2)=0),AND($A1="",$S1=0,OR(N($H1)>0,N($I1)>0))))';
+  const ranges=[{sheetId,startRowIndex:1,startColumnIndex:0,endColumnIndex:15},{sheetId,startRowIndex:1,startColumnIndex:17,endColumnIndex:18}];
   return [
     {updateCells:{start:{sheetId,rowIndex:0,columnIndex:17},rows:[{values:[
       {userEnteredValue:{stringValue:'Reference'},note:'Optional receipt or bank transfer number. Each journal line can have its own reference.'},
@@ -153,10 +156,8 @@ function journalPresentationRequests_(sheetId) {
     {repeatCell:{range:{sheetId,startRowIndex:1,startColumnIndex:17,endColumnIndex:18},cell:{userEnteredFormat:{numberFormat:{type:'TEXT'}}},fields:'userEnteredFormat.numberFormat'}},
     {updateDimensionProperties:{range:{sheetId,dimension:'COLUMNS',startIndex:18,endIndex:19},properties:{hiddenByUser:true},fields:'hiddenByUser'}},
     {updateDimensionProperties:{range:{sheetId,dimension:'COLUMNS',startIndex:17,endIndex:18},properties:{pixelSize:170},fields:'pixelSize'}},
-    {addConditionalFormatRule:{index:0,rule:{ranges:[
-      {sheetId,startRowIndex:1,startColumnIndex:0,endColumnIndex:15},
-      {sheetId,startRowIndex:1,startColumnIndex:17,endColumnIndex:18}],
-      booleanRule:{condition:{type:'CUSTOM_FORMULA',values:[{userEnteredValue:starts}]},format:{backgroundColor:{red:0.78,green:0.88,blue:0.96},textFormat:{bold:true}}}}}}
+    {addConditionalFormatRule:{index:0,rule:{ranges,booleanRule:{condition:{type:'CUSTOM_FORMULA',values:[{userEnteredValue:starts}]},format:{backgroundColor:{red:0.78,green:0.88,blue:0.96},textFormat:{bold:true}}}}}},
+    {addConditionalFormatRule:{index:1,rule:{ranges,booleanRule:{condition:{type:'CUSTOM_FORMULA',values:[{userEnteredValue:next}]},format:{backgroundColor:{red:1,green:0.94,blue:0.71}}}}}}
   ];
 }
 function ensureJournalPresentation_(sheet) {
@@ -201,7 +202,7 @@ function journalRules_(journalId,settingsId,firstBlank,rowCount) {
     field(cells(4,firstBlank),{userEnteredValue:{formulaValue:code}},'userEnteredValue');
     field(cells(6,firstBlank),{userEnteredValue:{formulaValue:type}},'userEnteredValue');
   }
-  field(cells(0,0,1),{note:'Assigned when you post. Select a transaction row and use Ledger → Post selected journal entry, or review and post the draft in the app.'},'note');
+  field(cells(0,0,1),{note:'Choose an account to start an ID. Each line uses the same ID until the entry balances. Posting records your Gmail and time.'},'note');
   return requests;
 }
 function setupJournal_(sheet) {
@@ -214,11 +215,9 @@ function setupJournal_(sheet) {
   Sheets.Spreadsheets.batchUpdate({requests},sheet.getId());
 }
 // A bound workbook can immediately fill the matching account when either dropdown changes.
-function onEdit(e){
-  if(!e || !e.range)return;
+function fillEditedAccount_(e,chart){
   const range=e.range, tab=range.getSheet();
   if(tab.getName()!=='Journal' || range.getLastRow()<2 || range.getColumn()>6 || range.getLastColumn()<5)return;
-  const chart=accounts_(e.source).filter(a=>a.use==='Posting');
   const first=Math.max(2,range.getRow()),count=range.getLastRow()-first+1;
   const target=tab.getRange(first,5,count,3), values=target.getValues(), formulas=target.getFormulas();
   const editName=range.getColumn()===6,editCode=range.getLastColumn()===5;
@@ -233,6 +232,108 @@ function onEdit(e){
     if(!formulas[i][2] && values[i][2]!==account.type)tab.getRange(n,7).setValue(account.type);
   }
 }
+function rememberSheetPoster_(){
+  const email=signedIn_(), key=Session.getTemporaryActiveUserKey();
+  if(key)PropertiesService.getUserProperties().setProperty('SHEET_POSTER',JSON.stringify({key,email}));
+  return email;
+}
+function enableMySheetPosting(){
+  const email=rememberSheetPoster_();
+  SpreadsheetApp.getActiveSpreadsheet().toast('Automatic Sheet posting enabled for '+email);
+}
+function sheetEditorEmail_(event){
+  try{
+    const email=event.user && event.user.getEmail();
+    if(email)return email.toLowerCase();
+  }catch(error){}
+  try{
+    const email=Session.getActiveUser().getEmail();
+    if(email)return email.toLowerCase();
+    const record=JSON.parse(PropertiesService.getUserProperties().getProperty('SHEET_POSTER')||'null');
+    if(record && record.key && record.key===Session.getTemporaryActiveUserKey())return record.email;
+  }catch(error){}
+  return '';
+}
+function onEdit(e){
+  if(!e || !e.range)return;
+  const range=e.range,tab=range.getSheet(),firstCol=range.getColumn(),lastCol=range.getLastColumn();
+  if(tab.getName()!=='Journal'||range.getLastRow()<2||![1,2,3,4,5,6,7,8,9,13,15,18].some(c=>firstCol<=c&&lastCol>=c))return;
+  lock_(()=>{
+    const chart=accounts_(e.source).filter(a=>a.use==='Posting');
+    if(firstCol<=6 && lastCol>=5)fillEditedAccount_(e,chart);
+    SpreadsheetApp.flush();
+    const rows=journalRows_(e.source), first=Math.max(0,range.getRow()-2), last=range.getLastRow()-2;
+    const groups=sheetEntryPlan_(rows,chart,first,last,e.source.getSpreadsheetTimeZone(),date_(new Date()));
+    if(!groups.length)return;
+    const books=bookNames_(e.source),email=sheetEditorEmail_(e);
+    for(const group of groups){
+      const {id,start,end,date,changes}=group;
+      for(const change of changes){
+        const n=change.index+2;
+        if(change.id){tab.getRange(n,1).setValue(id);tab.getRange(n,14).setValue('auto:'+id);}
+        if(change.date)tab.getRange(n,2).setValue(Math.round(Date.parse(date)/86400000)+25569);
+      }
+      if(!group.balanced || !group.validId || !group.book || !books.includes(group.book) || !group.hasMemo || group.conflict)continue;
+      if(!email){e.source.toast('Choose Ledger → Enable my Sheet posting to record your Gmail.');continue;}
+      // One range write stamps the entire transaction, leaving amounts, descriptions and receipts in place.
+      const stamp=[email,Utilities.formatDate(new Date(),'Asia/Vientiane','yyyy-MM-dd HH:mm:ss')+' +07:00',Utilities.getUuid()];
+      tab.getRange(start+2,10,end-start+1,3).setValues(Array.from({length:end-start+1},()=>stamp.slice()));
+      tab.getRange(start+2,14,end-start+1,1).clearContent();
+    }
+  });
+}
+function sheetEntryPlan_(rows,accounts,first,last,tz,today){
+  const codes=new Set(accounts.map(a=>a.code));
+  const names=new Map(accounts.map(a=>[a.name,a.code]));
+  const ids=rows.map(r=>String(r[0]||'').trim()),reserved=new Set(ids.filter(Boolean));
+  const groups=[],affectedAutoIds=new Set();
+  for(let i=first;i<=Math.min(last,rows.length-1);i++)if(rows[i][13]==='auto:'+ids[i])affectedAutoIds.add(ids[i]);
+  let group;
+  function close(){if(group)groups.push(group);group=null;}
+  const day=value=>value instanceof Date ? Utilities.formatDate(value,tz,'yyyy-MM-dd') :
+    typeof value==='number' ? new Date((value-25569)*86400000).toISOString().slice(0,10) : String(value||'').trim();
+  rows.forEach((row,i)=>{
+    const id=ids[i],auto=id && row[13]==='auto:'+id,manual=auto?'':id;
+    if(row[9] || row[11] || !row.some((v,c)=>c!==13 && v!=='' && v!=null)){close();return;}
+    if(group && manual && group.manual && group.manual!==manual)close();
+    if(!group)group={start:i,end:i,manual:'',autoIds:[],indexes:[],dates:new Set(),books:new Set(),codes:new Set(),projects:new Set(),categories:new Set(),validLines:true,balance:0,hasMemo:false};
+    group.end=i;
+    if(manual)group.manual=manual;
+    if(auto && !group.autoIds.includes(id))group.autoIds.push(id);
+    if(row[1])group.dates.add(day(row[1]));
+    if(row[2])group.books.add(String(row[2]).trim());
+    if(row[12])group.projects.add(String(row[12]).trim());
+    if(row[14])group.categories.add(String(row[14]).trim());
+    if(String(row[3]||'').trim())group.hasMemo=true;
+    const code=String(row[4]||names.get(row[5])||'');
+    if(codes.has(code) && (!row[5] || names.get(row[5])===code)){group.indexes.push(i);group.codes.add(code);}
+    else group.validLines=false;
+    try{const dr=cents_(row[7]),cr=cents_(row[8]);if((dr>0)===(cr>0))group.validLines=false;group.balance+=dr-cr;}
+    catch(error){group.validLines=false;}
+    group.balanced=group.validLines && group.codes.size>=2 && group.balance===0;
+    if(group.balanced)close();
+  });
+  close();
+  // If accounts were selected in advance, a newly balanced prefix can split its provisional ID.
+  const touched=g=>g.start<=last&&g.end>=first;
+  for(const g of groups)if(touched(g))g.autoIds.forEach(id=>affectedAutoIds.add(id));
+  const claimed=new Set(),plans=[];
+  for(const g of groups){
+    if(!g.indexes.length || !(touched(g)||g.autoIds.some(id=>affectedAutoIds.has(id))))continue;
+    const date=[...g.dates][0]||today;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date)))continue;
+    const prefix=date.slice(2,4)+date.slice(5,7)+'-'+date.slice(8);
+    const fits=id=>id.startsWith(prefix)&&/^[A-Z]+(?!000$)\d{3}$/.test(id.slice(prefix.length));
+    const existing=g.autoIds.find(id=>fits(id)&&!claimed.has(id));
+    const id=g.manual||existing||nextEntryId_(date,reserved);
+    const duplicateManual=g.manual && rows.some((row,i)=>(i<g.start||i>g.end)&&ids[i]===id && row[13]!=='auto:'+id);
+    claimed.add(id);reserved.add(id);
+    const changes=g.indexes.map(i=>({index:i,id:ids[i]!==id,date:!rows[i][1] && i===g.indexes[0] && !g.dates.size})).filter(c=>c.id||c.date);
+    plans.push({...g,id,date,changes,book:[...g.books][0],validId:fits(id),conflict:duplicateManual||g.dates.size>1||g.books.size>1||g.projects.size>1||g.categories.size>1});
+  }
+  return plans;
+}
+
 function postSelectedJournalEntry(){
   const sheet=SpreadsheetApp.getActiveSpreadsheet(), range=sheet.getActiveRange();
   if(range.getSheet().getName()!=='Journal'||range.getRow()<2)throw Error('Select a transaction row in Journal first.');

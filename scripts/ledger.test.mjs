@@ -139,3 +139,37 @@ test('a manually assigned ID, split receipts and different line descriptions sur
   assert.equal(raw[0][17],'000782');assert.equal(raw[0][15],'picker');assert.equal(raw[1][16],'jump');
   assert.equal(api.postEntry(draft()),'2611-11A005');assert.equal(raw[0][9],'poster@example.org');
 });
+test('bound laptop edits allocate on account choice and post only when a multi-line entry balances',()=>{
+  const {api,book}=fixture(),records=[],stamps=[],notes=[];
+  const blank=()=>Array(16).fill('');
+  const tab={getName:()=>'Journal',getRange:(r,c,n=1,w=1)=>({
+    setValue(v){records[r-2][c-1]=v;},
+    setValues(v){for(let i=0;i<n;i++)for(let j=0;j<w;j++)records[r-2+i][c-1+j]=v[i][j];if(c===10)stamps.push([r,n]);},
+    clearContent(){for(let i=0;i<n;i++)records[r-2+i][c-1]='';}
+  })};
+  api.fillEditedAccount_=()=>{};api.journalRows_=()=>records;
+  api.Utilities.formatDate=(_d,_tz,fmt)=>fmt==='yyyy-MM-dd'?'2026-11-11':'2026-11-11 13:20:00';
+  api.Utilities.getUuid=randomUUID;book.toast=t=>notes.push(t);
+  let email='first@example.org';api.sheetEditorEmail_=()=>email;
+  function edit(i,c,value){
+    while(records.length<=i)records.push(blank());records[i][c-1]=value;
+    api.onEdit({source:book,range:{getSheet:()=>tab,getColumn:()=>c,getLastColumn:()=>c,getRow:()=>i+2,getLastRow:()=>i+2}});
+  }
+  edit(0,2,'2026-11-09');edit(0,3,'Family');edit(0,4,'Deposits');assert.equal(records[0][0],'');
+  edit(0,6,'Cash');assert.equal(records[0][0],'2611-09A001');edit(0,8,100);
+  for(let i=1;i<=4;i++){edit(i,6,'Supplies');assert.equal(records[i][0],'2611-09A001');edit(i,9,25);if(i<4)assert.equal(stamps.length,0);}
+  assert.deepEqual(stamps,[[2,5]]);
+  assert.ok(records.every(r=>r[9]===email && r[10].includes('+07:00') && r[11]===records[0][11]));
+  edit(5,2,'2026-11-09');edit(5,3,'Family');edit(5,4,'Next');edit(5,6,'Cash');
+  assert.equal(records[5][0],'2611-09A002');
+  email='';edit(5,8,10);edit(6,6,'Supplies');edit(6,9,10);assert.equal(stamps.length,1);assert.equal(records[6][9],'');
+  email='second@example.org';edit(6,9,10);assert.equal(stamps.length,2);assert.equal(records[5][9],email);
+});
+test('preselected lines split at the balancing row and backdated provisional IDs follow the entered date',()=>{
+  const {api}=fixture(),rows=Array.from({length:4},()=>Array(16).fill(''));
+  for(const [i,r] of rows.entries()){r[0]='2611-11A002';r[13]='auto:'+r[0];r[4]=i%2?'5100':'1100';}
+  rows[0][1]='2026-11-09';rows[0][7]=10;rows[1][8]=10;
+  const groups=api.sheetEntryPlan_(rows,accounts,1,1,'Asia/Vientiane','2026-11-11');
+  assert.equal(groups.length,2);assert.equal(groups[0].id,'2611-09A001');assert.equal(groups[0].balanced,true);
+  assert.equal(groups[1].id,'2611-11A002');assert.equal(groups[1].balanced,false);
+});
