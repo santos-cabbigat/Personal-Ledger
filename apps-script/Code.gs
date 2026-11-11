@@ -17,15 +17,16 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addItem('Post selected journal entry','postSelectedJournalEntry').addToUi();
 }
 function openLedger() {
-  SpreadsheetApp.getUi().showSidebar(page_().setTitle('Ledger'));
+  SpreadsheetApp.getUi().showSidebar(page_(SpreadsheetApp.getActiveSpreadsheet()).setTitle('Ledger'));
 }
 function doGet() { return page_(); }
-function page_() {
+function page_(activeSheet) {
   const html=HtmlService.createHtmlOutputFromFile('Index');
   // Load the signed-in user's initial view in the same invocation that serves the page.
   // Refreshes and edits still read the live workbook.
   let initial;
-  try { initial=state(); } catch(error) { initial={loadError:String(error.message||error)}; }
+  try { initial=activeSheet ? workbookState_(activeSheet,signedIn_()) : state(); }
+  catch(error) { initial={loadError:String(error.message||error)}; }
   const encoded=JSON.stringify(initial).replace(/</g,'\\u003c');
   html.setContent(html.getContent().replace('<!--ledger-state-->',()=>'<script type="application/json" id="initialLedger">'+encoded+'</script>'));
   return html.setTitle('Shared ledger').addMetaTag('viewport','width=device-width, initial-scale=1, viewport-fit=cover');
@@ -335,9 +336,11 @@ function journalState_(sheet, accounts) {
   return {entries,warnings};
 }
 function state() {
-  const {sheet,email,owner}=context_(true);
-  if (!sheet) return {connected:false,email};
-  const accounts=accounts_(sheet);
+  const {sheet,email}=context_(true);
+  return sheet ? workbookState_(sheet,email) : {connected:false,email};
+}
+function workbookState_(sheet,email) {
+  const accounts=accounts_(sheet),owner=sheet.getOwner().getEmail().toLowerCase();
   return {connected:true,ledgerId:sheet.getId(),title:sheet.getSheetByName('Settings').getRange('B2').getDisplayValue(),
     url:sheet.getUrl(),email,owner:email===owner,books:bookNames_(sheet),accounts,...journalState_(sheet,accounts),today:date_(new Date())};
 }

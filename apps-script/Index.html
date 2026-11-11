@@ -45,7 +45,7 @@ async function load(initial){
     document.title=data.title;
     el('status').textContent=inSheet?'Saved books · Google Sheets':'Preview · Sample data only';
     home();
-  }catch(e){if(version!==loadVersion)return;data=null;el('homeData').replaceChildren();el('status').textContent='Could not read the ledger. '+e.message;}
+  }catch(e){if(version!==loadVersion)return;if(!data)el('homeData').replaceChildren();el('status').textContent=(data?'Refresh failed. Showing the last loaded entries. ':'Could not read the ledger. ')+e.message;}
 }
 function connectButtons(){
   return btn('Connect Google Drive','connectDrive()',true)+btn('Open existing ledger','existingLedgerForm()');
