@@ -8,7 +8,7 @@ const source=readFileSync(new URL('../apps-script/Code.gs',import.meta.url),'utf
 const accounts=[{code:'1100',name:'Cash',type:'Asset',use:'Posting'},{code:'5100',name:'Supplies',type:'Expense',use:'Posting'},{code:'1110',name:'Bank',type:'Asset',use:'Posting'}];
 function fixture() {
   const book={getId:()=>'ledger',getSheetByName:()=>tab,getSpreadsheetTimeZone:()=>'Asia/Vientiane'};
-  const tab={getSheetId:()=>1,getMaxRows:()=>1000,getRange:()=>({getDisplayValues:()=>[['Project','Edit request ID']]})};
+  const tab={getSheetId:()=>1,getMaxRows:()=>1000,getRange:()=>({getDisplayValues:()=>[['Project','Edit request ID','Category']]})};
   const raw=[], locks=[];
   const context=vm.createContext({Date,Map,Set,Utilities:{
     DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(algo,value)=>createHash(algo).update(value).digest(),
@@ -25,6 +25,7 @@ function fixture() {
   vm.runInContext(source,context);
   context.context_=()=>({email:'poster@example.org',sheet:book});
   context.accounts_=()=>accounts;context.rows_=()=>raw;
+  context.bookNames_=()=>['Personal','Business','Family'];
   return {api:context,book,raw,locks};
 }
 const draft=(amount=1000)=>({ledgerId:'ledger',date:'2026-11-11',book:'Personal',memo:'Supplies',project:'School',key:randomUUID(),lines:[{code:'5100',debit:amount},{code:'1100',credit:amount}]});
@@ -68,7 +69,7 @@ test('direct Sheet drafts receive the poster and permanent ID once',()=>{
 });
 test('Drive setup creates one empty ledger per new owner and reopens it',()=>{
   const {api}=fixture(), files=new Map(), properties=new Map(), initialized=[];
-  const book=id=>({getId:()=>id,getOwner:()=>({getEmail:()=>files.get(id).owner})});
+  const book=id=>({getId:()=>id,getSheetByName:()=>({getRange:()=>({getDisplayValue:()=>'Book types'})}),getOwner:()=>({getEmail:()=>files.get(id).owner})});
   let email='first@example.org';
   api.signedIn_=()=>email;
   api.context_=()=>({sheet:null,email});
@@ -91,8 +92,33 @@ test('Drive setup creates one empty ledger per new owner and reopens it',()=>{
   email='second@example.org';api.connectPersonalDrive();
   assert.equal(files.size,4);const own=properties.get(email).OWN_LEDGER;
   assert.notEqual(first,own);
+  api.setupBookPickers_=()=>{};
   api.openExistingLedger('https://docs.google.com/spreadsheets/d/'+first+'/edit');
   assert.equal(properties.get(email).ACTIVE_LEDGER,first);
   api.connectPersonalDrive();assert.equal(properties.get(email).ACTIVE_LEDGER,own);
   assert.deepEqual(initialized,[first,own]);
+});
+
+test('custom books and independent categories survive posting and sheet review',()=>{
+  const {api,book,raw}=fixture();
+  assert.throws(()=>api.postEntry({...draft(),book:'Unknown'}),/listed in Settings/);
+  const id=api.postEntry({...draft(),book:'Family',category:'Education'});
+  const entry=api.journalState_(book,accounts).entries[0];
+  assert.deepEqual([entry.book,entry.project,entry.category],['Family','School','Education']);
+  api.bookNames_=()=>['Personal','Business'];
+  assert.equal(api.journalState_(book,accounts).entries[0].id,id);
+  const edit={...draft(),book:'Family',editId:id,groupKey:entry.groupKey,revision:entry.revision,category:'Tuition'};
+  assert.equal(api.postEntry(edit),id);
+  assert.equal(raw[0][14],'Tuition');
+});
+test('Sheet pickers reference the book list, posted IDs, projects and categories',()=>{
+  const {api}=fixture();
+  const requests=api.bookPickerRequests_(123,321,true);
+  const lists=requests.map(r=>r.setDataValidation).filter(Boolean);
+  assert.deepEqual(Array.from(lists,r=>r.range.startColumnIndex),[2,12,14,15]);
+  assert.equal(lists[0].rule.condition.values[0].userEnteredValue,'=Settings!$F$2:$F');
+  assert.equal(lists[3].range.endRowIndex,2);
+  const settings=requests.filter(r=>r.updateCells?.start.sheetId===321);
+  assert.ok(settings.some(r=>r.updateCells.rows.some(row=>row.values[0].userEnteredValue.stringValue==='Business')));
+  assert.ok(requests.some(r=>r.updateCells?.rows[0].values[0].userEnteredValue.formulaValue?.includes('MATCH(P2,A:A,0)')));
 });

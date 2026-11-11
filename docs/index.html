@@ -11,8 +11,8 @@ main{padding-top:12px}header.hero{min-height:91px;position:relative;isolation:is
 .orb{position:absolute;right:32px;top:-20px;width:124px;height:124px;border-radius:50%;opacity:.65;z-index:-1;background:radial-gradient(circle,#80dcff 1px,transparent 1.6px) 0 0/5px 5px,radial-gradient(at 35% 30%,#7b3385,#234c80 50%,transparent 72%);mask-image:radial-gradient(circle at 56% 42%,#000 18%,#0008 48%,transparent 72%);transform:rotate(-20deg)}
 .hero .gear{background:#111b32c9}.tiles{margin:14px 0 16px}.tiles button{display:flex;align-items:center;gap:8px;font-size:15px}.tiles i{display:grid;place-items:center;width:22px}.tiles svg{width:19px;height:19px;fill:none;stroke:#b4e9ff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .panel{background:linear-gradient(110deg,#1c203c,#131e36);border-top-color:#927acc}.kpi{font-size:30px}.status{margin-top:8px;color:#c3b6f2}.item{border-color:#273552}button{touch-action:manipulation}button:active{filter:brightness(1.22)}h2{letter-spacing:-.02em}
-</style></head><body><main><header class="hero"><div class="orb" aria-hidden="true"></div><h1 id="title">Shared ledger</h1><button class="gear" aria-label="Settings" onclick="settings()">⚙</button></header><nav class="tiles"><button onclick="journals()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2zM8 4v16m3-11h5m-5 4h4"/></svg></i>Journal</button><button onclick="accountsView()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="5" rx="1"/><path d="M12 8v4M5 15v-3h14v3"/><rect x="2" y="15" width="6" height="5" rx="1"/><rect x="16" y="15" width="6" height="5" rx="1"/></svg></i>Accounts</button><button onclick="entryForm('Expense')"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg></i>Expense</button><button onclick="reports()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 17v-4h3v4m3 0V8h3v9m3 0V4h3v13"/></svg></i>Reports</button></nav><div class="row"><select id="scope" aria-label="Home book" onchange="home()"><option>All books</option><option>Personal</option><option>Business</option></select><button onclick="load()">Refresh</button></div><div class="status" id="status" role="status"></div><div id="homeData"></div></main><dialog id="modal"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
-<script src="demo.js?v=20261111-2"></script><script>
+</style></head><body><main><header class="hero"><div class="orb" aria-hidden="true"></div><h1 id="title">Shared ledger</h1><button class="gear" aria-label="Settings" onclick="settings()">⚙</button></header><nav class="tiles"><button onclick="journals()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2zM8 4v16m3-11h5m-5 4h4"/></svg></i>Journal</button><button onclick="accountsView()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="5" rx="1"/><path d="M12 8v4M5 15v-3h14v3"/><rect x="2" y="15" width="6" height="5" rx="1"/><rect x="16" y="15" width="6" height="5" rx="1"/></svg></i>Accounts</button><button onclick="entryForm('Expense')"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg></i>Expense</button><button onclick="reports()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 17v-4h3v4m3 0V8h3v9m3 0V4h3v13"/></svg></i>Reports</button></nav><div class="row"><select id="scope" aria-label="Home book" onchange="home()"><option value="">All books</option></select><button onclick="load()">Refresh</button></div><div class="status" id="status" role="status"></div><div id="homeData"></div></main><dialog id="modal"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
+<!--ledger-state--><script src="demo.js?v=20261111-3"></script><script>
 'use strict';
 const el=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,11 +27,12 @@ document.addEventListener('visibilitychange',()=>{
 });
 function ready(){if(data)return true;el('status').textContent='Connect Google Drive or open your ledger to continue.';return false}
 let loadVersion=0;
-async function load(){
+async function load(initial){
   const version=++loadVersion;
   el('status').textContent=inSheet?'Reading Google Sheet…':'Loading sample entries…';
   try{
-    const next=await call('state');
+    const next=initial || await call('state');
+    if(next.loadError)throw Error(next.loadError);
     if(version!==loadVersion)return;
     if(next.connected===false){
       data=null;
@@ -40,7 +41,10 @@ async function load(){
       el('homeData').innerHTML='<div class="panel"><h2>Your ledger</h2>'+connectButtons()+'</div>';
       return;
     }
+    const selected=el('scope').value;
     data=next;
+    const books=[...new Set([...data.books,...data.entries.map(row=>row.book)])];
+    el('scope').innerHTML='<option value="">All books</option>'+options(books,selected);
     el('title').textContent=data.title;
     document.title=data.title;
     el('status').textContent=inSheet?'Saved books · Google Sheets':'Preview · Sample data only';
@@ -60,9 +64,10 @@ function options(values,current){return values.map(v=>'<option '+(v===current?'s
 function field(name,html){return '<label>'+name+html+'</label>'}
 function btn(label,fn,primary=false){return '<button class="'+(primary?'primary':'')+'" onclick="'+fn+'">'+label+'</button>'}
 function groupEntries(rows){const groups=new Map();rows.forEach(r=>{const key=r.groupKey||r.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r)});return [...groups.values()].reverse()}
-let projectFilter='';
+let projectFilter='',categoryFilter='';
+function categories(){return [...new Set(data.entries.map(r=>r.category).filter(Boolean))].sort();}
 function projects(){return [...new Set(data.entries.map(r=>r.project).filter(Boolean))].sort((a,b)=>a.localeCompare(b));}
-function filtered(){const book=el('scope').value;return data.entries.filter(r=>(book==='All books'||r.book===book)&&(!projectFilter||r.project===projectFilter));}
+function filtered(){const book=el('scope').value;return data.entries.filter(r=>(!book||r.book===book)&&(!projectFilter||r.project===projectFilter)&&(!categoryFilter||r.category===categoryFilter));}
 function projectPicker(){
   const names=projects();
   if(!names.includes(projectFilter)) projectFilter='';
@@ -76,21 +81,27 @@ function sheetWarnings(){
 }
 function entryList(groups){return groups.map(g=>{const r=g[0],index=data.entries.indexOf(r);return '<button class="item" onclick="detail('+index+')"><span class="row"><strong>'+esc(r.memo)+'</strong><b class="money">'+amount(g.reduce((a,l)=>a+l.debit,0))+'</b></span><small>'+esc(r.sheetDraft?'Ready to post · '+r.id:r.id)+' · '+esc(r.date)+' · '+esc(r.book)+(r.project?' · '+esc(r.project):'')+'</small></button>'}).join('')||'<p class="muted">No entries yet.</p>'}
 function net(rows,type){return rows.filter(r=>r.type===type).reduce((s,r)=>s+Math.round(r.debit*100)-Math.round(r.credit*100),0)/100}
-function home(){if(!data)return;const picker=projectPicker();let rows=filtered();el('homeData').innerHTML=picker+sheetWarnings()+'<section class="panel"><small>Net income · All dates</small><div class="kpi">'+amount(-net(rows.filter(r=>!r.sheetDraft),'Income')-net(rows.filter(r=>!r.sheetDraft),'Expense'))+'</div></section><h2>Recent entries</h2>'+entryList(groupEntries(rows).slice(0,5))}
+function home(){if(!data)return;const names=categories();if(!names.includes(categoryFilter))categoryFilter='';const picker=projectPicker()+(names.length?field('Category','<select id="categoryFilter" onchange="categoryFilter=this.value;home()"><option value="">All categories</option>'+options(names,categoryFilter)+'</select>'):'');let rows=filtered();el('homeData').innerHTML=picker+sheetWarnings()+'<section class="panel"><small>Net income · All dates</small><div class="kpi">'+amount(-net(rows.filter(r=>!r.sheetDraft),'Income')-net(rows.filter(r=>!r.sheetDraft),'Expense'))+'</div></section><h2>Recent entries</h2>'+entryList(groupEntries(rows).slice(0,5))}
 function detail(index){
   const row=data.entries[index],lines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
-  dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,row.project,row.date].filter(Boolean).join(' · '))+'</p>'+
+  dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,row.project,row.category,row.date].filter(Boolean).join(' · '))+'</p>'+
     ledgerTable(lines)+'<p class="sub">'+esc(row.by?'Posted by '+row.by:'Entered in Google Sheets')+'<br>'+esc(row.id)+'</p>'+btn(row.sheetDraft?'Review & post sheet entry':'Edit entry','editEntry('+index+')',true));
 }
 function editEntry(index){
   const row=data.entries[index];
   draft={mode:'Journal',key:crypto.randomUUID(),ledgerId:data.ledgerId,editId:row.id,revision:row.revision,groupKey:row.groupKey,sheetDraft:row.sheetDraft,
-    book:row.book,project:row.project||'',date:row.date,memo:row.memo,
+    book:row.book,project:row.project||'',category:row.category||'',date:row.date,memo:row.memo,
     lines:data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id)).map(r=>({code:r.code,debit:r.debit?String(r.debit):'',credit:r.credit?String(r.credit):''}))};
   entryForm('Journal',true);
 }
 function ledgerTable(lines){return '<div class="table"><table><tr><th>Account</th><th>Debit</th><th>Credit</th></tr>'+lines.map(l=>'<tr><td>'+esc(l.name)+'</td><td>'+(+l.debit?amount(l.debit):'—')+'</td><td>'+(+l.credit?amount(l.credit):'—')+'</td></tr>').join('')+'</table></div>'}
-function journals(){if(!ready())return;dialog('Journal','<div class="actions">'+btn('New entry',"entryForm('Journal')",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+entryList(groupEntries(filtered())))}
+function idPicker(groups){
+  const posted=groups.filter(group=>!group[0].sheetDraft);
+  if(!posted.length)return '';
+  return field('Find entry ID','<select id="entryIdPicker" onchange="if(this.value)detail(Number(this.value))"><option value="">Choose an entry ID</option>'+
+    posted.map(([line])=>'<option value="'+data.entries.indexOf(line)+'">'+esc(line.id)+' · '+esc(line.memo)+'</option>').join('')+'</select>');
+}
+function journals(){if(!ready())return;const groups=groupEntries(filtered());dialog('Journal','<div class="actions">'+btn('New entry',"entryForm('Journal')",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
 function accountsView(){if(!ready())return;dialog('Chart of accounts',btn('Add account','newAccount()',true)+btn('Download accounts CSV','downloadAccounts()')+data.accounts.map((a,i)=>'<button class="item" onclick="accountDetail('+i+')"><strong>'+esc(a.code)+' · '+esc(a.name)+'</strong><br><small>'+esc(a.type)+' · '+esc(a.use)+(a.parent?' · Parent '+esc(a.parent):'')+'</small></button>').join(''))}
 function accountDetail(i){let a=data.accounts[i];let codes=new Set([a.code]);for(let j=0;j<data.accounts.length;j++){let n=codes.size;data.accounts.forEach(v=>{if(codes.has(v.parent))codes.add(v.code)});if(n===codes.size)break}dialog(a.name,entryList(groupEntries(filtered().filter(r=>codes.has(r.code)))))}
 function acOptions(list,current){return list.map(a=>'<option value="'+esc(a.code)+'" '+(a.code===current?'selected':'')+'>'+esc(a.code)+' · '+esc(a.name)+'</option>').join('')}
@@ -98,7 +109,7 @@ function newAccount(){dialog('Add account',field('Code','<input id="code" inputm
 function parents(){el('parent').innerHTML='<option value="">No parent</option>'+acOptions(data.accounts.filter(a=>a.use==='Group'&&a.type===el('classify').value))}
 async function write(method,args,after){if(locked)return;locked=true;el('err').textContent='Saving…';let result;try{result=await call(method,...args)}catch(e){el('err').textContent=e.message;locked=false;return}locked=false;el('modal').close();await load();if(after&&data)after(result)}
 function addAccount(){write('saveAccount',[{ledgerId:data.ledgerId,code:el('code').value,name:el('accountName').value,type:el('classify').value,parent:el('parent').value,use:el('use').value}],accountsView)}
-function entryForm(mode,keep=false){if(!ready())return;if(!keep){draft={mode,key:crypto.randomUUID(),ledgerId:data.ledgerId,project:projectFilter,book:el('scope').value==='Business'?'Business':'Personal',date:data.today,memo:'',lines:[{code:mode==='Expense'?'5100':'1100',debit:'',credit:''},{code:mode==='Expense'?'1100':'4100',debit:'',credit:''}]}}dialog(draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':mode==='Expense'?'Record expense':'New journal entry','<div class="two">'+field('Book','<select id="book">'+options(['Personal','Business'],draft.book)+'</select>')+field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+field('Project (optional)','<input id="project" list="projectNames" maxlength="80" value="'+esc(draft.project)+'" placeholder="Choose or type a project name"><datalist id="projectNames">'+options(projects(),draft.project)+'</datalist>')+field('Description','<input id="memo" maxlength="180" value="'+esc(draft.memo)+'">')+'<div id="lines"></div><div class="actions">'+(mode==='Journal'?btn('Add line','addLine()'):'')+btn('Review','guard(review)',true)+'</div>');drawLines()}
+function entryForm(mode,keep=false){if(!ready())return;if(!keep){draft={mode,key:crypto.randomUUID(),ledgerId:data.ledgerId,project:projectFilter,category:categoryFilter,book:el('scope').value||data.books[0]||'',date:data.today,memo:'',lines:[{code:mode==='Expense'?'5100':'1100',debit:'',credit:''},{code:mode==='Expense'?'1100':'4100',debit:'',credit:''}]}}dialog(draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':mode==='Expense'?'Record expense':'New journal entry','<div class="two">'+field('Book','<select id="book">'+options([...new Set([...data.books,draft.book].filter(Boolean))],draft.book)+'</select>')+field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+field('Project (optional)','<input id="project" list="projectNames" maxlength="80" value="'+esc(draft.project)+'" placeholder="Choose or type a project name"><datalist id="projectNames">'+options(projects(),draft.project)+'</datalist>')+field('Category (optional)','<input id="category" list="categoryNames" maxlength="80" value="'+esc(draft.category)+'" placeholder="Choose or type a category"><datalist id="categoryNames">'+options(categories(),draft.category)+'</datalist>')+field('Description','<input id="memo" maxlength="180" value="'+esc(draft.memo)+'">')+'<div id="lines"></div><div class="actions">'+(mode==='Journal'?btn('Add line','addLine()'):'')+btn('Review','guard(review)',true)+'</div>');drawLines()}
 function formatAmount(value){
   const parts=String(value??'').replace(/,/g,'').split('.');
   if(parts.length>2 || !/^\d*$/.test(parts[0]) || (parts.length===2 && !/^\d*$/.test(parts[1])))return String(value);
@@ -120,13 +131,13 @@ function amountInput(id,value){
 }
 function drawLines(){const list=data.accounts.filter(a=>a.use==='Posting');if(draft.mode==='Expense'){el('lines').innerHTML=field('Expense account','<select id="ac0">'+acOptions(list.filter(a=>a.type==='Expense'),draft.lines[0].code)+'</select>')+field('Paid from','<select id="ac1">'+acOptions(list.filter(a=>a.type==='Asset'||a.type==='Liability'),draft.lines[1].code)+'</select>')+field('Amount (LAK)',amountInput('expAmount',draft.lines[0].debit));return}
 el('lines').innerHTML=draft.lines.map((l,i)=>'<div class="line">'+field('Account','<select id="ac'+i+'">'+acOptions(list,l.code)+'</select>')+'<div class="two">'+field('Debit',amountInput('dr'+i,l.debit))+field('Credit',amountInput('cr'+i,l.credit))+'</div>'+(draft.lines.length>2?btn('Remove','removeLine('+i+')'):'')+'</div>').join('')}
-function readForm(){draft.book=el('book').value;draft.date=el('date').value;draft.memo=el('memo').value.trim();draft.project=el('project').value.trim();draft.lines.forEach((l,i)=>{l.code=el('ac'+i).value;if(draft.mode==='Expense'){l.debit=i===0?el('expAmount').value.replace(/,/g,''):'';l.credit=i===1?el('expAmount').value.replace(/,/g,''):''}else{l.debit=el('dr'+i).value.replace(/,/g,'').trim();l.credit=el('cr'+i).value.replace(/,/g,'').trim()}})}
+function readForm(){draft.book=el('book').value;draft.date=el('date').value;draft.memo=el('memo').value.trim();draft.project=el('project').value.trim();draft.category=el('category').value.trim();draft.lines.forEach((l,i)=>{l.code=el('ac'+i).value;if(draft.mode==='Expense'){l.debit=i===0?el('expAmount').value.replace(/,/g,''):'';l.credit=i===1?el('expAmount').value.replace(/,/g,''):''}else{l.debit=el('dr'+i).value.replace(/,/g,'').trim();l.credit=el('cr'+i).value.replace(/,/g,'').trim()}})}
 function addLine(){readForm();if(draft.lines.length<40){draft.lines.push({code:'',debit:'',credit:''});drawLines()}}
 function removeLine(i){readForm();draft.lines.splice(i,1);drawLines()}
 function review(){readForm();if(!draft.memo||!draft.date)throw Error('Enter a date and description.');
 let dr=0,cr=0;for(const l of draft.lines){for(const n of [l.debit,l.credit])if(n&&!/^(0|[1-9]\d{0,10})(\.\d{1,2})?$/.test(n))throw Error('Enter amounts with up to two decimals.');if((+l.debit>0)===(+l.credit>0))throw Error('Each account needs either a debit or a credit.');dr+=Math.round(l.debit*100);cr+=Math.round(l.credit*100)}
 if(dr!==cr||!dr||new Set(draft.lines.map(l=>l.code)).size<2)throw Error('Debits and credits must balance across at least two accounts.');
-const lines=draft.lines.map(l=>({...l,name:data.accounts.find(a=>a.code===l.code).name}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,draft.project,draft.date].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(draft.mode,true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
+const lines=draft.lines.map(l=>({...l,name:data.accounts.find(a=>a.code===l.code).name}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,draft.project,draft.category,draft.date].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(draft.mode,true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
 function post(){
   write('postEntry',[draft],id=>{
     draft=null;
@@ -150,9 +161,9 @@ function reportData(){
     records=asOf?[['Assets',net(rows,'Asset')],['Liabilities',liabilities],['Equity before earnings',equity],['Accumulated earnings',inc-exp],['Total liabilities and equity',liabilities+equity+inc-exp]]:
       [['Income',inc],['Expenses',exp],['Net income',inc-exp]];
   }else if(kind==='General ledger'){
-    headers=['Code','Account','Date','Book','Project','Description','Debit (LAK)','Credit (LAK)'];moneyColumns=[6,7];
+    headers=['Code','Account','Date','Book','Project','Category','Description','Debit (LAK)','Credit (LAK)'];moneyColumns=[7,8];
     for(const account of accounts)for(const line of rows.filter(r=>r.code===account.code)){
-      records.push([account.code,account.name,line.date,line.book,line.project||'',line.memo,line.debit,line.credit]);
+      records.push([account.code,account.name,line.date,line.book,line.project||'',line.category||'',line.memo,line.debit,line.credit]);
     }
   }else{
     headers=['Code','Account','Debit (LAK)','Credit (LAK)'];moneyColumns=[2,3];
@@ -163,11 +174,11 @@ function reportData(){
     }
     records.push(['','Total',totalDr/100,totalCr/100]);
   }
-  const scope=[el('scope').value,projectFilter||'All projects',asOf?'Beginning':from||'Beginning',to||'All dates'];
+  const scope=[el('scope').value||'All books',projectFilter||'All projects',categoryFilter||'All categories',asOf?'Beginning':from||'Beginning',to||'All dates'];
   const html='<div class="table"><table><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+
     records.map(row=>'<tr>'+row.map((v,i)=>'<td>'+esc(moneyColumns.includes(i)?amount(v):v)+'</td>').join('')+'</tr>').join('')+'</table></div>';
   el('result').innerHTML='<p class="sub">'+esc(scope.join(' · '))+'</p>'+html;
-  reportExport={name:kind,rows:[[kind],['Book','Project','From','Through'],scope,[],headers,...records]};
+  reportExport={name:kind,rows:[[kind],['Book','Project','Category','From','Through'],scope,[],headers,...records]};
 }
 function csv(name,rows){
   const escapeCell=value=>{
@@ -180,10 +191,20 @@ function csv(name,rows){
   document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),60000);
 }
 function downloadReport(){if(reportExport)csv(reportExport.name,reportExport.rows);}
-function downloadJournal(){csv('Journal',[['Entry ID','Date','Book','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Project'],...filtered().map(r=>[r.id,r.date,r.book,r.memo,r.code,r.name,r.type,r.debit,r.credit,r.by,r.project])]);}
+function downloadJournal(){csv('Journal',[['Entry ID','Date','Book','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Project','Category'],...filtered().map(r=>[r.id,r.date,r.book,r.memo,r.code,r.name,r.type,r.debit,r.credit,r.by,r.project,r.category])]);}
 function downloadAccounts(){csv('Accounts',[['Code','Account name','Classification','Parent code','Use'],...data.accounts.map(a=>[a.code,a.name,a.type,a.parent,a.use])]);}
-function sheetSettings(){if(!ready())return;dialog('Settings',(data.owner?field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()'):'<b>'+esc(data.title)+'</b>')+'<p><a class="link" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx">Download all data (Excel)</a></p>'+connectButtons()+'<p class="sub">Signed in as '+esc(data.email)+'</p><a class="link" href="'+esc(data.url)+'" target="_blank" rel="noopener">Open Google Sheet</a>'+(data.owner?'<p>To add another person, open the Sheet, tap Share, and invite their Google account as an editor.</p>':''))}
-function settings(){if(!ready())return;if(inSheet)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+'<p class="sub">Preview changes last until you reload this page.</p>')}
+function bookSettings(){
+  return field('Book types','<span class="sub">'+esc(data.books.join(' · '))+'</span><input id="newBookType" maxlength="80" placeholder="New book name">')+
+    btn('Add book type','saveBookTypeFromForm()');
+}
+function saveBookTypeFromForm(){
+  const name=el('newBookType').value.trim();
+  if(!name){el('err').textContent='Enter a book name.';return;}
+  write('saveBookType',[name,data.ledgerId],settings);
+}
+function sheetSettings(){if(!ready())return;dialog('Settings',(data.owner?field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()'):'<b>'+esc(data.title)+'</b>')+bookSettings()+'<p><a class="link" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx">Download all data (Excel)</a></p>'+connectButtons()+'<p class="sub">Signed in as '+esc(data.email)+'</p><a class="link" href="'+esc(data.url)+'" target="_blank" rel="noopener">Open Google Sheet</a>'+(data.owner?'<p>To add another person, open the Sheet, tap Share, and invite their Google account as an editor.</p>':''))}
+function settings(){if(!ready())return;if(inSheet)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+bookSettings()+'<p class="sub">Preview changes last until you reload this page.</p>')}
 function saveName(){write('renameLedger',[el('appName').value,data.ledgerId])}
-load();
+const initialLedger=el('initialLedger');
+load(initialLedger ? JSON.parse(initialLedger.textContent) : null);
 </script></body></html>

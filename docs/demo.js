@@ -7,13 +7,13 @@ const demoAccounts = [
  ['5000','Expenses','Expense','','Group'],['5100','Household expenses','Expense','5000','Posting'],['5200','Business supplies','Expense','5000','Posting'],['5300','Utilities','Expense','5000','Posting']
 ].map(([code,name,type,parent,use])=>({code,name,type,parent,use}));
 const sampleDay = offset=>new Date(Date.now()+7*3600000-offset*86400000).toISOString().slice(0,10);
-const previewData={title:'Personal & Business Ledger',owner:true,ledgerId:'demo',accounts:demoAccounts,entries:[],today:sampleDay(0)};
+const previewData={title:'Personal & Business Ledger',owner:true,books:['Personal','Business'],ledgerId:'demo',accounts:demoAccounts,entries:[],today:sampleDay(0)};
 const savedKeys=new Map();
-function recordSample(id,date,book,memo,lines,project='',revision=id){
+function recordSample(id,date,book,memo,lines,project='',revision=id,category=''){
  const records=lines.map(l=>{
    const a=previewData.accounts.find(a=>a.code===l.code&&a.use==='Posting');
    if(!a)throw Error('Choose a posting account.');
-   return {id,date,book,memo,project,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
+   return {id,date,book,memo,project,category,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
  });
  previewData.entries.push(...records);
 }
@@ -31,9 +31,16 @@ async function previewCall(action,input){
    const id=input.editId||nextEntryId_(input.date,previewData.entries.map(r=>r.id));
    const old=previewData.entries.filter(r=>r.id===id);
    if(input.editId && (!old.length || old[0].revision!==input.revision)) throw Error('Refresh and reopen this entry.');
-   recordSample(id,input.date,input.book,input.memo,input.lines,input.project,input.key);
+   recordSample(id,input.date,input.book,input.memo,input.lines,input.project,input.key,input.category);
    previewData.entries=previewData.entries.filter(r=>!old.includes(r));
    savedKeys.set(input.key,id);return id;
+ }
+ case 'saveBookType':{
+   const name=input.trim();
+   if(!name||name.length>80||/^[=+@-]/.test(name))throw Error('Enter a book name of 1–80 characters.');
+   const existing=previewData.books.find(book=>book.toLowerCase()===name.toLowerCase());
+   if(!existing)previewData.books.push(name);
+   return existing||name;
  }
  case 'saveAccount':{
    if(!/^[1-9]\d{1,9}$/.test(input.code)||previewData.accounts.some(a=>a.code===input.code))throw Error('Choose a new numeric account code of 2–10 digits.');
