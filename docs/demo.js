@@ -7,13 +7,13 @@ const demoAccounts = [
  ['5000','Expenses','Expense','','Group'],['5100','Household expenses','Expense','5000','Posting'],['5200','Business supplies','Expense','5000','Posting'],['5300','Utilities','Expense','5000','Posting']
 ].map(([code,name,type,parent,use])=>({code,name,type,parent,use}));
 const sampleDay = offset=>new Date(Date.now()+7*3600000-offset*86400000).toISOString().slice(0,10);
-const previewData={title:'Personal & Business Ledger',owner:true,accounts:demoAccounts,entries:[],today:sampleDay(0)};
+const previewData={title:'Personal & Business Ledger',owner:true,ledgerId:'demo',accounts:demoAccounts,entries:[],today:sampleDay(0)};
 const savedKeys=new Map();
-function recordSample(id,date,book,memo,lines){
+function recordSample(id,date,book,memo,lines,project='',revision=id){
  const records=lines.map(l=>{
    const a=previewData.accounts.find(a=>a.code===l.code&&a.use==='Posting');
    if(!a)throw Error('Choose a posting account.');
-   return {id,date,book,memo,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
+   return {id,date,book,memo,project,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
  });
  previewData.entries.push(...records);
 }
@@ -28,8 +28,11 @@ async function previewCall(action,input){
  case 'state':return structuredClone(previewData);
  case 'postEntry':{
    if(savedKeys.has(input.key))return savedKeys.get(input.key);
-   const id=crypto.randomUUID();
-   recordSample(id,input.date,input.book,input.memo,input.lines);
+   const id=input.editId||nextEntryId_(input.date,previewData.entries.map(r=>r.id));
+   const old=previewData.entries.filter(r=>r.id===id);
+   if(input.editId && (!old.length || old[0].revision!==input.revision)) throw Error('Refresh and reopen this entry.');
+   recordSample(id,input.date,input.book,input.memo,input.lines,input.project,input.key);
+   previewData.entries=previewData.entries.filter(r=>!old.includes(r));
    savedKeys.set(input.key,id);return id;
  }
  case 'saveAccount':{
@@ -43,4 +46,24 @@ async function previewCall(action,input){
  }
  default:throw Error('Unknown preview action.');
  }
+}
+
+// Sequence is shared by both books and starts again on each journal date.
+function nextEntryId_(date, existingIds) {
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw Error('Choose a valid entry date.');
+  const prefix=date.slice(2,4)+date.slice(5,7)+'-'+date.slice(8);
+  let maximum=0;
+  for(const id of existingIds){
+    if(!String(id).startsWith(prefix)) continue;
+    const match=/^([A-Z]+)(\d{3})$/.exec(String(id).slice(prefix.length));
+    if(!match || match[2]==='000') continue;
+    let group=0;
+    for(const letter of match[1]) group=group*26+letter.charCodeAt(0)-64;
+    const position=(group-1)*999+Number(match[2]);
+    if(!Number.isSafeInteger(position)) throw Error('Invalid sequence number for '+prefix+'.');
+    maximum=Math.max(maximum,position);
+  }
+  let group=Math.floor(maximum/999)+1, letters='';
+  while(group){group--;letters=String.fromCharCode(65+group%26)+letters;group=Math.floor(group/26);}
+  return prefix+letters+String(maximum%999+1).padStart(3,'0');
 }

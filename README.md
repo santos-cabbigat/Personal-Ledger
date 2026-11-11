@@ -1,11 +1,17 @@
 # Personal & Business Ledger
 
-Phone-first double-entry accounting for personal and small-business books, with a chart of accounts, expense entry and reports.
+[Open the ledger](https://santos-cabbigat.github.io/Personal-Ledger/) or [try the sample-data preview](https://santos-cabbigat.github.io/Personal-Ledger/?preview=1). The main link opens the Google deployment. The preview lasts for the current session.
 
-[Open the mobile preview](https://santos-cabbigat.github.io/Personal-Ledger/). GitHub Pages serves the interface from `docs/`. Sample transactions last for the current page session. No private workbook identifiers, credentials or ledger records are stored in this repository.
+## Use a Google Sheet
 
-## Shared interface
+Each person signs in with their own Google account. **Connect Google Drive** creates or reconnects their own ledger in **My Drive → Personal & Business Ledger**. The original owner keeps the existing workbook. To use one shared database, its owner shares the spreadsheet with each contributor as an Editor. In Settings, contributors choose **Open existing ledger** and paste the same spreadsheet URL. The app refreshes when reopened or brought back to the foreground with the main screen visible. **Refresh** reads the latest Sheet immediately.
 
-`docs/index.html` is the interface source. Run `node scripts/build.mjs` to regenerate the matching `apps-script/Index.html`. The preview uses in-memory sample data. In Google Apps Script the same interface uses the authenticated Sheet backend in `apps-script/Code.gs`.
+In **Accounts**, enter a unique code, name, classification, optional parent code, and use (`Posting` or `Group`). On **Journal**, enter adjacent lines for each transaction. Use Date, Book, Description, Account code, Debit or Credit, and an optional Project. For blank Entry IDs, keep each balanced transaction together. Date, book, description and project can be entered once within that group. In the app, refresh, open the transaction, then select **Review & post sheet entry**. The app fills in its permanent ID, account details, and the signed-in poster. Incomplete groups have a row-specific message. Drafts appear in Journal and are excluded from reports until posted. To change a posted item, open **Journal → entry → Edit entry**.
 
-The Google backend needs a bound deployment on the prepared private workbook with Overview, Journal, Accounts and Settings tabs. The owner initializes the workbook through its Ledger menu and the web app runs as the signed-in user. Google Sheet sharing controls access. The Pages preview does not post to this backend.
+All books in the same spreadsheet share a daily series: `YYMM-DDA001` through `YYMM-DDA999`, then `B001`; `Z999` rolls to `AA001`. IDs use the transaction date. Edits keep the original posted ID and Gmail. Backup the workbook from Settings as Excel; Journal, Accounts and Reports offer CSV downloads. Report CSV uses the same book, project and date filters as the on-screen report.
+
+## Deploy an update
+
+Use the [two-file installer](https://santos-cabbigat.github.io/Personal-Ledger/copy-script.html) in the existing Apps Script project. When opened with a workbook ID in its URL fragment, the installer binds the legacy workbook without including its ID in the public repository. The installer contains both the complete Code.gs and the manifest. The manifest enables the advanced Sheets v4 and Drive v3 services. If you use a standard Cloud project, enable their APIs there too. Keep the deployment running as the user accessing the app. Google handles sign-in in the browser. Anyone using a future Android wrapper must sign in through the system browser or a browser-backed custom tab.
+
+Edit `docs/index.html` and `apps-script/Code.gs`, then run `node scripts/build.mjs` to regenerate the Apps Script interface, the preview's matching ID generator, and the single-file script installer. The split Apps Script sources also support a Sheet-bound deployment initialized from the Ledger menu.
