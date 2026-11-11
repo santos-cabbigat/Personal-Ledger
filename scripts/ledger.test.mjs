@@ -178,7 +178,7 @@ test('separate book tabs supply the book, share the sequence and preserve refere
   for(const [i,name] of ['Family','Business'].entries()){
     const raw=[];
     tabs.push({raw,getSheetId:()=>i+11,getName:()=>name,getLastRow:()=>raw.length+1,getMaxRows:()=>1000,
-      getRange:(r,c,n,w)=>({getDisplayValue:()=>'Description',getDisplayValues:()=>[['Project','Edit request ID','Category']],
+      getRange:(r,c,n,w)=>({getDisplayValue:()=>'Reference',getDisplayValues:()=>[['Project','Edit request ID','Category']],
         getValues:()=>raw.map(row=>Array.from({length:w},(_,j)=>row[j]??''))})});
   }
   api.context_=()=>({sheet:book,email:'owner@example.org'});api.bookTabs_=()=>tabs;
@@ -188,7 +188,7 @@ test('separate book tabs supply the book, share the sequence and preserve refere
     if(req.repeatCell){const {range}=req.repeatCell,rr=tabs.find(t=>t.getSheetId()===range.sheetId).raw[range.startRowIndex-1];rr.fill('',0,range.endColumnIndex);}
   }};
   const id=api.postEntry({...draft(),book:'Family',reference:'000ab45'});assert.equal(id,'2611-11A001');
-  assert.equal(tabs[0].raw[0][2],'Supplies');assert.equal(tabs[0].raw[0][16],'000AB45');assert.equal(tabs[1].raw.length,0);
+  assert.equal(tabs[0].raw[0][6],'Supplies');assert.equal(tabs[0].raw[0][2],'000AB45');assert.equal(tabs[1].raw.length,0);
   assert.equal(api.postEntry({...draft(),book:'Business'}),'2611-11A002');
   let state=api.journalState_(book,accounts);assert.deepEqual([...new Set(state.entries.map(r=>r.book))],['Family','Business']);
   const old=state.entries.find(r=>r.id===id);

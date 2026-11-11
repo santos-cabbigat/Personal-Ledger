@@ -85,12 +85,12 @@ function driveItem_(role, name, mimeType, parent) {
   if (parent) resource.parents = [parent];
   return Drive.Files.create(resource,null,{fields:'id'}).id;
 }
-const BOOK_TAB_HEADERS=['Entry ID','Date','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Posted at','Request ID','Project','Edit request ID','Category','Find entry ID','Journal row','Reference','Draft running balance'];
+const BOOK_TAB_HEADERS=['Entry ID','Date','Reference','Account code','Account name','Type','Description','Debit (LAK)','Credit (LAK)','Posted by','Posted at','Request ID','Project','Edit request ID','Category','Find entry ID','Journal row','Draft running balance'];
 function bookTabs_(sheet){
   return sheet.getSheets().filter(tab=>{
     if(['Overview','Settings','Accounts','Journal'].includes(tab.getName()))return false;
     const h=tab.getRange('A1:C1').getDisplayValues()[0];
-    return h[0]==='Entry ID'&&h[1]==='Date'&&h[2]==='Description';
+    return h[0]==='Entry ID'&&h[1]==='Date'&&h[2]==='Reference';
   });
 }
 function validTabName_(name){
@@ -102,12 +102,12 @@ function formatBookJournal_(sheet,tab,fresh){
   if(fresh){
     tab.getRange(1,1,1,BOOK_TAB_HEADERS.length).setValues([BOOK_TAB_HEADERS]).setFontWeight('bold').setBackground('#254566').setFontColor('#ffffff');
     tab.setFrozenRows(1);
-    tab.setColumnWidth(1,126);tab.setColumnWidth(2,110);tab.setColumnWidth(3,255);tab.setColumnWidth(5,180);tab.setColumnWidth(17,180);
+    tab.setColumnWidth(1,126);tab.setColumnWidth(2,110);tab.setColumnWidth(3,175);tab.setColumnWidth(5,180);tab.setColumnWidth(7,255);
     tab.getRange(2,2,n,1).setNumberFormat('yyyy-mm-dd').setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
-    for(const [col,source] of [[4,'D2:D'],[5,'E2:E'],[12,'H2:H'],[14,'I2:I']]){
+    for(const [col,source] of [[4,'D2:D'],[5,'E2:E'],[13,'H2:H'],[15,'I2:I']]){
       tab.getRange(2,col,n,1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(settings.getRange(source),true).setAllowInvalid(true).build());
     }
-    tab.getRange(2,7,n,2).setNumberFormat('#,##0.##');
+    tab.getRange(2,8,n,2).setNumberFormat('#,##0.##');
     const formulas=Array.from({length:n},(_,i)=>{const r=i+2;return [
       '=IF(E'+r+'="","",IFERROR(INDEX(Accounts!$A$2:$A,MATCH(E'+r+',Accounts!$B$2:$B,0)),""))',
       '=IF(D'+r+'="","",IFERROR(INDEX(Accounts!$C$2:$C,MATCH(TO_TEXT(D'+r+'),ARRAYFORMULA(TO_TEXT(Accounts!$A$2:$A)),0)),""))'
@@ -116,15 +116,15 @@ function formatBookJournal_(sheet,tab,fresh){
     tab.getRange(2,6,n,1).setFormulas(formulas.map(row=>[row[1]]));
   }
   tab.getRange('A1').setNote('Choose an account to start an entry. The same ID continues until the entry balances.');
-  tab.getRange('Q1:R1').setValues([['Reference','Draft running balance']]);
-  tab.getRange('Q2:Q').setNumberFormat('@');tab.hideColumns(18);
-  tab.getRange('O2').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(tab.getRange('A2:A'),true).setAllowInvalid(false).build());
-  tab.getRange('P2').setFormula('=IF(O2="","",IFERROR(HYPERLINK("#gid='+tab.getSheetId()+'&range=A"&MATCH(O2,A:A,0),"Open row "&MATCH(O2,A:A,0)),""))');
-  tab.getRange('R2').setFormula('=SCAN(0,SEQUENCE(ROWS(A2:A),1,2),LAMBDA(b,rnum,IF(OR(INDEX(A:A,rnum)<>"",AND(INDEX(B:B,rnum)="",INDEX(C:C,rnum)="",INDEX(D:D,rnum)="",INDEX(E:E,rnum)="",INDEX(G:G,rnum)="",INDEX(H:H,rnum)="",INDEX(Q:Q,rnum)="")),0,ROUND(b+N(INDEX(G:G,rnum))-N(INDEX(H:H,rnum)),2))))');
-  const occupied=n=>'OR('+['A','B','C','D','E','G','H','Q'].map(col=>'$'+col+n+'<>""').join(',')+')';
-  const starts='=AND('+occupied(2)+',OR(ROW()=2,$A2<>$A1,AND($A2="",OR(NOT('+occupied(1)+'),AND($R1=0,OR(N($G1)>0,N($H1)>0))))))';
-  const next='=AND(NOT('+occupied(2)+'),OR(ROW()=2,AND($A1<>"",COUNTIF($A$2:$A,$A1)>=2,SUMIF($A$2:$A,$A1,$G$2:$G)>0,ROUND(SUMIF($A$2:$A,$A1,$G$2:$G)-SUMIF($A$2:$A,$A1,$H$2:$H),2)=0),AND($A1="",$R1=0,OR(N($G1)>0,N($H1)>0))))';
-  const ranges=[tab.getRange('A2:N'),tab.getRange('Q2:Q')];
+  tab.getRange('R1').setValue('Draft running balance');
+  tab.getRange('C2:C').setNumberFormat('@');tab.hideColumns(18);
+  tab.getRange('P2').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(tab.getRange('A2:A'),true).setAllowInvalid(false).build());
+  tab.getRange('Q2').setFormula('=IF(P2="","",IFERROR(HYPERLINK("#gid='+tab.getSheetId()+'&range=A"&MATCH(P2,A:A,0),"Open row "&MATCH(P2,A:A,0)),""))');
+  tab.getRange('R2').setFormula('=SCAN(0,SEQUENCE(ROWS(A2:A),1,2),LAMBDA(b,rnum,IF(OR(INDEX(A:A,rnum)<>"",AND(INDEX(B:B,rnum)="",INDEX(C:C,rnum)="",INDEX(D:D,rnum)="",INDEX(E:E,rnum)="",INDEX(G:G,rnum)="",INDEX(H:H,rnum)="",INDEX(I:I,rnum)="")),0,ROUND(b+N(INDEX(H:H,rnum))-N(INDEX(I:I,rnum)),2))))');
+  const occupied=n=>'OR('+['A','B','C','D','E','G','H','I'].map(col=>'$'+col+n+'<>""').join(',')+')';
+  const starts='=AND('+occupied(2)+',OR(ROW()=2,$A2<>$A1,AND($A2="",OR(NOT('+occupied(1)+'),AND($R1=0,OR(N($H1)>0,N($I1)>0))))))';
+  const next='=AND(NOT('+occupied(2)+'),OR(ROW()=2,AND($A1<>"",COUNTIF($A$2:$A,$A1)>=2,SUMIF($A$2:$A,$A1,$H$2:$H)>0,ROUND(SUMIF($A$2:$A,$A1,$H$2:$H)-SUMIF($A$2:$A,$A1,$I$2:$I),2)=0),AND($A1="",$R1=0,OR(N($H1)>0,N($I1)>0))))';
+  const ranges=[tab.getRange('A2:O')];
   const rule=(formula,color)=>SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(formula).setBackground(color).setRanges(ranges);
   const others=tab.getConditionalFormatRules().filter(r=>!String(r.getBooleanCondition()?.getCriteriaValues()[0]||'').includes('ROW()=2'));
   tab.setConditionalFormatRules([rule(starts,'#c7e0f5').setBold(true).build(),rule(next,'#fff0b5').build(),...others]);
@@ -146,7 +146,7 @@ function syncBookTabs_(sheet){
     const stack='VSTACK('+names.map(name=>"'"+name.replace(/'/g,"''")+"'!"+col+'2:'+col).join(',')+')';
     return '=IFERROR(LET(values,'+stack+',SORT(UNIQUE(FILTER(values,values<>"")))),"")';
   };
-  sheet.getSheetByName('Settings').getRange('G2:I2').setFormulas([[distinct('A'),distinct('L'),distinct('N')]]);
+  sheet.getSheetByName('Settings').getRange('G2:I2').setFormulas([[distinct('A'),distinct('M'),distinct('O')]]);
 }
 function useProjectOneJournal(){
   const sheet=SpreadsheetApp.getActiveSpreadsheet();
@@ -165,11 +165,20 @@ function migrateSingleBook_(sheet,name){
       {deleteDimension:{range:{sheetId:old.getSheetId(),dimension:'COLUMNS',startIndex:2,endIndex:3}}}
     ]},sheet.getId());
   }
-  const primary=sheet.getSheetByName(name);
-  if(!primary || primary.getRange('C1').getDisplayValue()!=='Description')throw Error('Check the journal headers before migrating.');
-  formatBookJournal_(sheet,primary,false);
-  syncBookTabs_(sheet);
-  sheet.setActiveSheet(primary);
+  // Read fresh server state after a Sheets API structural change.
+  const fresh=SpreadsheetApp.openById(sheet.getId()),primary=fresh.getSheetByName(name);
+  if(!primary)throw Error('Could not re-open the renamed book tab.');
+  // An untouched older Journal has Description in C and Reference in Q after removing Book.
+  // Move whole columns so amounts, formulas, validation and cell notes stay attached.
+  if(primary.getRange('C1').getDisplayValue()==='Description' && primary.getRange('Q1').getDisplayValue()==='Reference'){
+    primary.moveColumns(primary.getRange('Q:Q'),3);
+    primary.moveColumns(primary.getRange('D:D'),8);
+  }
+  if(JSON.stringify(primary.getRange('A1:R1').getDisplayValues()[0])!==JSON.stringify(BOOK_TAB_HEADERS))
+    throw Error('Check the book headers before migrating.');
+  formatBookJournal_(fresh,primary,false);
+  syncBookTabs_(fresh);
+  fresh.setActiveSheet(primary);
 }
 
 function bookNames_(sheet) {
@@ -264,7 +273,7 @@ function journalRows_(sheet,bookTab) {
     const count=bookTab.getLastRow()-1;
     const values=count>0 ? bookTab.getRange(2,1,count,17).getValues() : [];
     const rows=values.map(r=>{
-      const cells=[r[0],r[1],'',...r.slice(2,14),r[16]];
+      const cells=[r[0],r[1],'',r[6],r[3],r[4],r[5],...r.slice(7,15),r[2]];
       if(cells.some(v=>v!=='' && v!=null))cells[2]=bookTab.getName();
       return cells;
     });
@@ -365,17 +374,18 @@ function onEdit(e){
     lock_(()=>syncBookTabs_(e.source));return;
   }
   const dedicated=tab.getName()!=='Journal';
-  if(dedicated && (['Settings','Overview','Accounts'].includes(tab.getName()) || tab.getRange('C1').getDisplayValue()!=='Description'))return;
+  if(dedicated && (['Settings','Overview','Accounts'].includes(tab.getName()) || tab.getRange('C1').getDisplayValue()!=='Reference'))return;
   const shift=dedicated?1:0;
-  if(range.getLastRow()<2||![1,2,4,5,6,7,8,9,13,15,18,...(dedicated?[]:[3])].some(c=>{const physical=c>2?c-shift:c;return firstCol<=physical && lastCol>=physical;}))return;
+  if(range.getLastRow()<2 || !(dedicated?[1,2,3,4,5,6,7,8,9,13,15]:[1,2,3,4,5,6,7,8,9,13,15,18]).some(c=>firstCol<=c && lastCol>=c))return;
   lock_(()=>{
     const chart=accounts_(e.source).filter(a=>a.use==='Posting');
-    if(firstCol<=18-shift && lastCol>=18-shift){
+    const refCol=dedicated?3:18;
+    if(firstCol<=refCol && lastCol>=refCol){
       const start=Math.max(2,range.getRow()), count=range.getLastRow()-start+1;
-      const refs=tab.getRange(start,18-shift,count,1), values=refs.getValues(), formulas=refs.getFormulas();
+      const refs=tab.getRange(start,refCol,count,1), values=refs.getValues(), formulas=refs.getFormulas();
       values.forEach(([value],i)=>{
         if(typeof value==='string' && !formulas[i][0] && value!==value.toUpperCase())
-          tab.getRange(start+i,18-shift).setRichTextValue(SpreadsheetApp.newRichTextValue().setText(value.toUpperCase()).build());
+          tab.getRange(start+i,refCol).setRichTextValue(SpreadsheetApp.newRichTextValue().setText(value.toUpperCase()).build());
       });
     }
     if(firstCol<=6-shift && lastCol>=5-shift)fillEditedAccount_(e,chart,shift);
@@ -389,15 +399,15 @@ function onEdit(e){
       const {id,start,end,date,changes}=group;
       for(const change of changes){
         const n=change.index+2;
-        if(change.id){tab.getRange(n,1).setValue(id);tab.getRange(n,14-shift).setValue('auto:'+id);}
+        if(change.id){tab.getRange(n,1).setValue(id);tab.getRange(n,14).setValue('auto:'+id);}
         if(change.date)tab.getRange(n,2).setValue(Math.round(Date.parse(date)/86400000)+25569);
       }
       if(!group.balanced || !group.validId || !group.book || !books.includes(group.book) || !group.hasMemo || group.conflict)continue;
       if(!email){e.source.toast('Choose Ledger → Enable my Sheet posting to record your Gmail.');continue;}
       // One range write stamps the entire transaction, leaving amounts, descriptions and receipts in place.
       const stamp=[email,Utilities.formatDate(new Date(),'Asia/Vientiane','yyyy-MM-dd HH:mm:ss')+' +07:00',Utilities.getUuid()];
-      tab.getRange(start+2,10-shift,end-start+1,3).setValues(Array.from({length:end-start+1},()=>stamp.slice()));
-      tab.getRange(start+2,14-shift,end-start+1,1).clearContent();
+      tab.getRange(start+2,10,end-start+1,3).setValues(Array.from({length:end-start+1},()=>stamp.slice()));
+      tab.getRange(start+2,14,end-start+1,1).clearContent();
     }
   });
 }
@@ -699,18 +709,18 @@ function postWithContext_(input,{sheet,email}) {
     const legacy=sheet.getSheetByName('Journal'), dedicated=!legacy;
     const journal=legacy||sheet.getSheetByName(input.sourceBook||input.book);
     const destination=legacy||sheet.getSheetByName(input.book);
-    if(!journal || !destination || (dedicated && [journal,destination].some(t=>t.getRange('C1').getDisplayValue()!=='Description')))throw Error('Choose an available book tab.');
+    if(!journal || !destination || (dedicated && [journal,destination].some(t=>t.getRange('C1').getDisplayValue()!=='Reference')))throw Error('Choose an available book tab.');
     checkLedger_(sheet,input.ledgerId);
     ensureJournalPresentation_(sheet);
     if (!/^[a-f0-9-]{36}$/i.test(String(input.key))) throw Error('Missing posting reference.');
     const rows=journalRows_(sheet,dedicated?journal:null);
     const allRows=dedicated?journalRows_(sheet):rows;
-    const header=journal.getRange(1,dedicated?12:13,1,3).getDisplayValues()[0];
+    const header=journal.getRange(1,13,1,3).getDisplayValues()[0];
     if(header.some((v,i)=>v && v!==JOURNAL_HEADERS[12+i])) throw Error('Check the Project, Edit request ID and Category headers in Journal.');
     const sheetId=journal.getSheetId(), requests=[];
     const update=(index,column,values,tabId=sheetId)=>({updateCells:{start:{sheetId:tabId,rowIndex:index,columnIndex:column},
       rows:values.map(cells_),fields:'userEnteredValue'}});
-    if(header.some(v=>!v)) requests.push(update(0,dedicated?11:12,[JOURNAL_HEADERS.slice(12)]));
+    if(header.some(v=>!v)) requests.push(update(0,12,[JOURNAL_HEADERS.slice(12)]));
     const edit=!!input.editId;
     const prior=allRows.find(row=>String(row[edit?13:11])===input.key);
     if(prior) {
@@ -743,14 +753,14 @@ function postWithContext_(input,{sheet,email}) {
     const moving=destination.getSheetId()!==sheetId;
     const common=moving?0:Math.min(positions.length,values.length);
     function writeLines(index,lines){
-      requests.push(update(index,0,lines.map(row=>dedicated?[...row.slice(0,2),...row.slice(3,15)]:row.slice(0,15)),destination.getSheetId()));
-      requests.push(update(index,REFERENCE_COLUMN-1-(dedicated?1:0),lines.map(row=>[row[15]]),destination.getSheetId()));
+      requests.push(update(index,0,lines.map(row=>dedicated?[row[0],row[1],row[15],row[4],row[5],row[6],row[3],...row.slice(7,15)]:row.slice(0,15)),destination.getSheetId()));
+      if(!dedicated)requests.push(update(index,REFERENCE_COLUMN-1,lines.map(row=>[row[15]]),destination.getSheetId()));
     }
     for(let i=0;i<common;i++)writeLines(positions[i]+1,[values[i]]);
     for(let i=common;i<positions.length;i++){
-      requests.push({repeatCell:{range:{sheetId,startRowIndex:positions[i]+1,endRowIndex:positions[i]+2,startColumnIndex:0,endColumnIndex:JOURNAL_HEADERS.length-(dedicated?1:0)},
+      requests.push({repeatCell:{range:{sheetId,startRowIndex:positions[i]+1,endRowIndex:positions[i]+2,startColumnIndex:0,endColumnIndex:JOURNAL_HEADERS.length},
         cell:{},fields:'userEnteredValue'}});
-      requests.push(update(positions[i]+1,REFERENCE_COLUMN-1-(dedicated?1:0),[['']]));
+      if(!dedicated)requests.push(update(positions[i]+1,REFERENCE_COLUMN-1,[['']]));
     }
     if(common<values.length){
       const extra=values.slice(common);
