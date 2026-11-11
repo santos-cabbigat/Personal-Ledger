@@ -75,7 +75,12 @@ function sourceBookFormula_(tab){
   const parentMap='FILTER({ARRAYFORMULA(TO_TEXT(Accounts!A2:A)),Accounts!B2:B},Accounts!F2:F='+book+',Accounts!E2:E="Group")';
   return 'IFNA(LET(lines,FILTER('+prefix+'A2:O,'+ids+'<>""),keys,CHOOSECOLS(lines,1),codes,ARRAYFORMULA(TO_TEXT(CHOOSECOLS(lines,4))),uniqueIds,UNIQUE(keys),'+
     'dates,MAP(uniqueIds,LAMBDA(key,MAXIFS('+col('B')+','+ids+',key))),'+
-    'states,MAP(uniqueIds,LAMBDA(key,LET(dr,SUMIF('+ids+',key,'+col('H')+'),cr,SUMIF('+ids+',key,'+col('I')+'),ct,COUNTIF('+ids+',key),st,COUNTIFS('+ids+',key,'+col('J')+',"<>"' +','+col('L')+',"<>"' +'),IF(AND(st=ct,ct>=2,dr>0,ROUND(dr-cr,2)=0),"Posted",IF(st=0,"Draft","Review"))))),'+
+    'states,MAP(uniqueIds,LAMBDA(key,LET(grp,FILTER(lines,keys=key),debits,CHOOSECOLS(grp,8),credits,CHOOSECOLS(grp,9),accts,CHOOSECOLS(grp,4),dts,CHOOSECOLS(grp,2),ct,ROWS(grp),'+
+    'sides,SUM(MAP(debits,credits,LAMBDA(dval,cval,N(AND(OR(dval="",ISNUMBER(dval)),OR(cval="",ISNUMBER(cval)),N(dval)>=0,N(cval)>=0,(N(dval)>0)+(N(cval)>0)=1))))),'+
+    'validAccts,SUM(MAP(accts,LAMBDA(ac,N(COUNTIFS(Accounts!F2:F,'+book+',Accounts!E2:E,"Posting",Accounts!A2:A,ac)=1)))),'+
+    'dated,IFNA(COUNTUNIQUE(FILTER(dts,ISNUMBER(dts))),0),signedRows,COUNTIFS('+ids+',key,'+col('J')+',"<>"' +','+col('L')+',"<>"' +'),'+
+    'clean,AND(ct>=2,sides=ct,validAccts=ct,dated=1,COUNTUNIQUE(accts)>=2,SUM(debits)>0,ROUND(SUM(debits)-SUM(credits),2)=0,COUNTIF(CHOOSECOLS(grp,7),"<>")>0),'+
+    'IF(NOT(clean),"Review",IF(signedRows=ct,"Posted",IF(AND(COUNTIFS('+ids+',key,'+col('J')+',"<>"' +')=0,COUNTIFS('+ids+',key,'+col('L')+',"<>"' +')=0),"Balanced draft","Review")))))),'+
     'roles,ARRAYFORMULA(IFNA(VLOOKUP(codes,'+accountMap+',3,FALSE),"")),parents,ARRAYFORMULA(IFNA(VLOOKUP(TO_TEXT(IFNA(VLOOKUP(codes,'+accountMap+',2,FALSE),"")),'+parentMap+',2,FALSE),"")),'+
     'HSTACK(ARRAYFORMULA(IF(keys<>"",'+book+',"")),codes,CHOOSECOLS(lines,5,6),ARRAYFORMULA(VLOOKUP(keys,HSTACK(uniqueIds,dates),2,FALSE)),keys,CHOOSECOLS(lines,3,7,8,9,13,15),roles,ARRAYFORMULA(VLOOKUP(keys,HSTACK(uniqueIds,states),2,FALSE)),parents)),MAKEARRAY(1,15,LAMBDA(rr,cc,"")))';
 }
@@ -95,8 +100,12 @@ function reportTable_(tab,headers,widths){
 }
 function buildLedgerViews_(sheet){
   const ledger=sheet.getSheetByName('General Ledger'),trial=sheet.getSheetByName('Trial Balance'),src="'Report Data'!";
-  reportTable_(ledger,[...REPORT_COLUMNS_.slice(0,10),'Running Dr − Cr','Project','Category'],[130,75,190,110,116,134,150,300,125,125,149,140,140]);
-  ledger.getRange('A2').setFormula('=IFNA(LET(lines,SORT(FILTER('+src+'A2:L,'+src+'N2:N="Posted"),1,TRUE,2,TRUE,5,TRUE,6,TRUE),bal,SCAN(0,SEQUENCE(ROWS(lines)),LAMBDA(prev,idx,ROUND(INDEX(lines,idx,9)-INDEX(lines,idx,10)+IF(OR(idx=1,INDEX(lines,idx,1)<>INDEX(lines,MAX(1,idx-1),1),INDEX(lines,idx,2)<>INDEX(lines,MAX(1,idx-1),2)),0,prev),2))),HSTACK(CHOOSECOLS(lines,1,2,3,4,5,6,7,8,9,10),bal,CHOOSECOLS(lines,11,12))),"")');
+  reportTable_(ledger,[...REPORT_COLUMNS_.slice(0,10),'Running Dr − Cr','Project','Category','Status'],[130,75,190,110,116,134,150,300,125,125,149,140,140,135]);
+  const basis=sheet.getSheetByName('Settings').getRange('K2');
+  sheet.getSheetByName('Settings').getRange('K1').setValue('Ledger & trial balance basis');
+  basis.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['All balanced entries','Posted only'],true).setAllowInvalid(false).build());
+  if(!basis.getValue())basis.setValue('All balanced entries');
+  ledger.getRange('A2').setFormula('=IFNA(LET(lines,SORT(FILTER('+src+'A2:N,(('+src+'N2:N="Posted")+('+src+'N2:N="Balanced draft")*(Settings!K2<>"Posted only"))>0),1,TRUE,2,TRUE,5,TRUE,6,TRUE),bal,SCAN(0,SEQUENCE(ROWS(lines)),LAMBDA(prev,idx,ROUND(INDEX(lines,idx,9)-INDEX(lines,idx,10)+IF(OR(idx=1,INDEX(lines,idx,1)<>INDEX(lines,MAX(1,idx-1),1),INDEX(lines,idx,2)<>INDEX(lines,MAX(1,idx-1),2)),0,prev),2))),HSTACK(CHOOSECOLS(lines,1,2,3,4,5,6,7,8,9,10),bal,CHOOSECOLS(lines,11,12,14))),"")');
   ledger.getRange('E2:E').setNumberFormat('dd-mmm-yyyy');ledger.getRange('I2:K').setNumberFormat('#,##0.##;[Red](#,##0.##);0');
   reportTable_(trial,['Book','Code','Account','Classification','Debit balance','Credit balance'],[140,90,240,135,155,155]);
   const gl="'General Ledger'!";
@@ -121,19 +130,22 @@ function buildMonthSheet_(sheet,initialBook){
   merge('A4:B4');tab.getRange('A4').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(sheet.getSheetByName('Settings').getRange('F2:F'),true).setAllowInvalid(false).build());
   tab.getRange('C4').setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build()).setNumberFormat('mmm yyyy').setNote('Choose any date in the month to report.');
   if(first){tab.getRange('A4').setValue(initialBook);tab.getRange('C4').setValue(Math.round(Date.parse(date_(new Date()).slice(0,7)+'-01')/86400000)+25569);}
-  tab.getRange('D4').setValue('Posted entries');tab.getRange('A4:D4').setBackground(pale).setFontWeight('bold');tab.setRowHeight(4,32);
-  const sum=(col,when,filter,value)=>'SUMIFS('+source+col+'2:'+col+','+source+'A2:A,$A$4,'+source+'N2:N,"Posted",'+source+'E2:E,"' + (when==='prior'?'<':'<=') + '"&'+(when==='prior'?'(EOMONTH($C$4,-1)+1)':'EOMONTH($C$4,0)')+(when==='month'?','+source+'E2:E,">"&EOMONTH($C$4,-1)':'')+','+source+filter+'2:'+filter+',"'+value+'")';
+  const basis=tab.getRange('D4');
+  basis.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['All balanced entries','Posted only'],true).setAllowInvalid(false).build());
+  if(!['All balanced entries','Posted only'].includes(basis.getDisplayValue()))basis.setValue('All balanced entries');
+  tab.getRange('A4:D4').setBackground(pale).setFontWeight('bold');tab.setRowHeight(4,32);
+  const sum=(col,when,filter,value)=>'SUMIFS('+source+col+'2:'+col+','+source+'A2:A,$A$4,'+source+'N2:N,IF($D$4="Posted only","Posted","<>Review"),'+source+'E2:E,"' + (when==='prior'?'<':'<=') + '"&'+(when==='prior'?'(EOMONTH($C$4,-1)+1)':'EOMONTH($C$4,0)')+(when==='month'?','+source+'E2:E,">"&EOMONTH($C$4,-1)':'')+','+source+filter+'2:'+filter+',"'+value+'")';
   band('A6:D6','BANK MOVEMENT',navy);
   tab.getRange('A7:D7').setValues([['Opening balance','Money in','Money out','Closing balance']]).setFontColor(violet).setFontWeight('bold');
   tab.getRange('A8:D8').setFormulas([['='+sum('I','prior','M','Bank')+'-'+sum('J','prior','M','Bank'),'='+sum('I','month','M','Bank'),'='+sum('J','month','M','Bank'),'=A8+B8-C8']]).setBackground('#e9f6f4').setFontSize(15).setFontWeight('bold');tab.getRange('D8').setBackground(aqua);tab.setRowHeight(8,39);
   band('A10:D10','INCOME & EXPENSES',navy);
-  tab.getRange('A11:D11').setValues([['Income','Expenses','Net activity','Posted entries']]).setFontColor(violet).setFontWeight('bold');
+  tab.getRange('A11:D11').setValues([['Income','Expenses','Net activity','Entries included']]).setFontColor(violet).setFontWeight('bold');
   const count='COUNTUNIQUEIFS('+source+'F2:F,'+source+'A2:A,$A$4,'+source+'E2:E,">"&EOMONTH($C$4,-1),'+source+'E2:E,"<="&EOMONTH($C$4,0),'+source+'F2:F,"<>",'+source+'N2:N,';
-  tab.getRange('A12:D12').setFormulas([['='+sum('J','month','D','Income')+'-'+sum('I','month','D','Income'),'='+sum('I','month','D','Expense')+'-'+sum('J','month','D','Expense'),'=A12-B12','='+count+'"Posted")']]).setBackground(pale).setFontSize(15).setFontWeight('bold');tab.setRowHeight(12,38);
-  merge('A14:D14').setFormula('="Posted entries only   ·   "&'+count+'"<>Posted")&" unposted or incomplete entries this month"').setFontSize(10).setFontColor(violet);
+  tab.getRange('A12:D12').setFormulas([['='+sum('J','month','D','Income')+'-'+sum('I','month','D','Income'),'='+sum('I','month','D','Expense')+'-'+sum('J','month','D','Expense'),'=A12-B12','='+count+'IF($D$4="Posted only","Posted","<>Review"))']]).setBackground(pale).setFontSize(15).setFontWeight('bold');tab.setRowHeight(12,38);
+  merge('A14:D14').setFormula('='+count+'"Posted")&" posted   ·   "&'+count+'"Balanced draft")&IF($D$4="Posted only"," balanced drafts excluded"," balanced drafts included")&"   ·   "&'+count+'"Review")&" need review"').setFontSize(10).setFontColor(violet);
   band('A16:D16','ACCOUNT BREAKDOWN',navy);
   tab.getRange('A17:D17').setValues([['Classification','Parent account','Account','Amount (LAK)']]).setFontWeight('bold').setBackground(pale);
-  tab.getRange('A18').setFormula('=IFNA(LET(lines,FILTER('+source+'A2:O,'+source+'A2:A=$A$4,'+source+'N2:N="Posted",'+source+'E2:E>EOMONTH($C$4,-1),'+source+'E2:E<=EOMONTH($C$4,0),(('+source+'D2:D="Income")+('+source+'D2:D="Expense"))>0),typ,CHOOSECOLS(lines,4),parts,HSTACK(typ,CHOOSECOLS(lines,15,3),ARRAYFORMULA(IF(typ="Income",CHOOSECOLS(lines,10)-CHOOSECOLS(lines,9),CHOOSECOLS(lines,9)-CHOOSECOLS(lines,10)))),QUERY(parts,"select Col1,Col2,Col3,sum(Col4) group by Col1,Col2,Col3 order by Col1 desc,Col2,Col3 label Col1 \'\',Col2 \'\',Col3 \'\',sum(Col4) \'\'",0)),"No posted income or expenses")');
+  tab.getRange('A18').setFormula('=IFNA(LET(lines,FILTER('+source+'A2:O,'+source+'A2:A=$A$4,'+source+'N2:N<>"Review",IF($D$4="Posted only",'+source+'N2:N="Posted",'+source+'N2:N<>""),'+source+'E2:E>EOMONTH($C$4,-1),'+source+'E2:E<=EOMONTH($C$4,0),(('+source+'D2:D="Income")+('+source+'D2:D="Expense"))>0),typ,CHOOSECOLS(lines,4),parts,HSTACK(typ,CHOOSECOLS(lines,15,3),ARRAYFORMULA(IF(typ="Income",CHOOSECOLS(lines,10)-CHOOSECOLS(lines,9),CHOOSECOLS(lines,9)-CHOOSECOLS(lines,10)))),QUERY(parts,"select Col1,Col2,Col3,sum(Col4) group by Col1,Col2,Col3 order by Col1 desc,Col2,Col3 label Col1 \'\',Col2 \'\',Col3 \'\',sum(Col4) \'\'",0)),"No income or expenses for this selection")');
   for(const addr of ['A8:D8','A12:C12','D18:D'])tab.getRange(addr).setNumberFormat('#,##0.##;[Red](#,##0.##);0');
   tab.getRange('A18:C').setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);tab.setRowHeights(6,2,28);tab.setRowHeight(10,28);tab.setRowHeight(16,28);
 }
