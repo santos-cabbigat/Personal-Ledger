@@ -160,7 +160,7 @@ function syncBookTabs_(sheet){
 function useProjectOneJournal(){
   const sheet=SpreadsheetApp.getActiveSpreadsheet();
   if(sheet.getOwner().getEmail().toLowerCase()!==signedIn_())throw Error('Only the owner can migrate the workbook.');
-  lock_(()=>migrateSingleBook_(sheet,'Project 1'));
+  lock_(()=>migrateSingleBook_(sheet,sheet.getSheetByName('Journal')?'Project 1':primaryBookName_(sheet)));
   rememberSheetPoster_();
 }
 function migrateSingleBook_(sheet,name){
@@ -634,10 +634,13 @@ function state() {
   const {sheet,email}=context_(true);
   return sheet ? workbookState_(sheet,email) : {connected:false,email};
 }
+function primaryBookName_(sheet){
+  return bookNames_(sheet).find(book=>!DEFAULT_BOOKS.includes(book))||bookNames_(sheet)[0];
+}
 function workbookState_(sheet,email) {
   const accounts=accounts_(sheet),owner=sheet.getOwner().getEmail().toLowerCase();
   return {connected:true,ledgerId:sheet.getId(),title:sheet.getSheetByName('Settings').getRange('B2').getDisplayValue(),
-    url:sheet.getUrl(),email,owner:email===owner,books:bookNames_(sheet),accounts,...journalState_(sheet,accounts),today:date_(new Date())};
+    url:sheet.getUrl(),email,owner:email===owner,reportBook:sheet.getSheetByName('Monthly Report')?.getRange('A4').getDisplayValue()||primaryBookName_(sheet),books:bookNames_(sheet),accounts,...journalState_(sheet,accounts),today:date_(new Date())};
 }
 function lock_(action) {
   const lock=LockService.getScriptLock(); lock.waitLock(15000);

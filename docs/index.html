@@ -282,7 +282,7 @@ function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,ex
 }
 function monthlyReport(book,month,clean=false,basis){
   basis=basis||el('monthBasis')?.value||el('reportBasis')?.value||'All balanced entries';
-  book=book||el('reportBook')?.value||el('scope').value||(data.books.includes('Project 1')?'Project 1':data.books[0]);
+  book=book||el('reportBook')?.value||el('scope').value||(data.books.includes(data.reportBook)?data.reportBook:data.books[0]);
   month=month||data.today.slice(0,7);
   const chart=chartFor(book),accountMap=new Map(chart.filter(a=>a.use==='Posting').map(a=>[a.code,a]));
   const groupMap=new Map(chart.filter(a=>a.use==='Group').map(a=>[a.code,a.name]));

@@ -27,7 +27,7 @@ function configureBookChart_(tab){
 function installProjectReporting(){
   const sheet=SpreadsheetApp.getActiveSpreadsheet();
   if(sheet.getOwner().getEmail().toLowerCase()!==signedIn_())throw Error('Open this setup as the workbook owner.');
-  lock_(()=>installBookReports_(sheet,'Project 1',true));
+  lock_(()=>installBookReports_(sheet,primaryBookName_(sheet),true));
 }
 function installBookReports_(sheet,initialBook,temporary){
   const chart=sheet.getSheetByName('Accounts'),settings=sheet.getSheetByName('Settings');
@@ -120,7 +120,7 @@ function buildMonthSheet_(sheet,initialBook){
   const tab=sheet.getSheetByName('Monthly Report'),source="'Report Data'!";
   const first=!tab.getRange('A1').getValue(),navy='#191e38',ink='#211f3d',violet='#503b78',pale='#eee8fa',aqua='#bfece6';
   tab.setHiddenGridlines(true);tab.setTabColor(violet);
-  tab.setColumnWidth(1,148);tab.setColumnWidth(2,220);tab.setColumnWidth(3,150);tab.setColumnWidth(4,151);
+  tab.setColumnWidth(1,148);tab.setColumnWidth(2,220);tab.setColumnWidth(3,150);tab.setColumnWidth(4,178);
   tab.getRange('A1:D18').setFontFamily('Arial').setFontColor(ink).setVerticalAlignment('middle');
   const merge=(a)=>{const r=tab.getRange(a);if(!r.isPartOfMerge())r.merge();return r;};
   const band=(a,text,color)=>merge(a).setValue(text).setBackground(color).setFontColor('#ffffff').setFontWeight('bold');
@@ -135,7 +135,7 @@ function buildMonthSheet_(sheet,initialBook){
   if(!['All balanced entries','Posted only'].includes(basis.getDisplayValue()))basis.setValue('All balanced entries');
   tab.getRange('A4:D4').setBackground(pale).setFontWeight('bold');tab.setRowHeight(4,32);
   const sum=(col,when,filter,value)=>'SUMIFS('+source+col+'2:'+col+','+source+'A2:A,$A$4,'+source+'N2:N,IF($D$4="Posted only","Posted","<>Review"),'+source+'E2:E,"' + (when==='prior'?'<':'<=') + '"&'+(when==='prior'?'(EOMONTH($C$4,-1)+1)':'EOMONTH($C$4,0)')+(when==='month'?','+source+'E2:E,">"&EOMONTH($C$4,-1)':'')+','+source+filter+'2:'+filter+',"'+value+'")';
-  merge('A5:D5').setFormula('="After money in and money out, "&A4&" has ₭"&TEXT(D8,"#,##0.##")&" in the bank."').setFontColor(ink).setFontSize(11).setWrap(true);
+  merge('A5:D5').setFormula('="After money in and money out, "&A4&" has ₭"&TEXT(D8,"#,##0")&" in the bank."').setFontColor(ink).setFontSize(11).setWrap(true);
   tab.setRowHeight(5,42);
   band('A6:D6','MONEY IN THE BANK',navy);
   tab.getRange('A7:D7').setValues([['Bank at start','Money in','Money out','Money left in the bank']]).setFontColor(violet).setFontWeight('bold');
