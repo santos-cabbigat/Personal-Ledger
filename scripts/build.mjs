@@ -3,6 +3,7 @@ const root=new URL('../',import.meta.url);
 const read=path=>readFile(new URL(path,root),'utf8');
 const write=(path,content)=>writeFile(new URL(path,root),content);
 const source=await read('docs/index.html'), backend=await read('apps-script/Code.gs');
+const reporting=await read('apps-script/Reporting.gs');
 const manifest=await read('apps-script/appsscript.json');
 const live=source.replace(/<script>\s*if \(location\.origin[\s\S]*?<\/script>/,'')
   .replace(/<script src="demo\.js(?:\?[^"]*)?"><\/script>/,'');
@@ -13,7 +14,7 @@ const sequence=backend.slice(backend.indexOf('// Sequence is shared by both book
 await write(demoPath,demo+'\n\n'+sequence.trimEnd()+'\n');
 const single=backend.replace("properties.getProperty('LEDGER_ID')","properties.getProperty('LEDGER_ID') || '__WORKBOOK__'")
   .replace("HtmlService.createHtmlOutputFromFile('Index')",'HtmlService.createHtmlOutput(LEDGER_HTML_)')+
-  '\nconst LEDGER_HTML_ = '+JSON.stringify(live)+';\n';
+  '\n'+reporting+'\nconst LEDGER_HTML_ = '+JSON.stringify(live)+';\n';
 const js=value=>JSON.stringify(value).replaceAll('<','\\u003c');
 const installer=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Update Personal &amp; Business Ledger</title><style>body{max-width:42rem;margin:5vh auto;padding:1.2rem;font:17px/1.5 system-ui;color:#edf4ff;background:#11182b}button{padding:.8rem 1rem;border:0;border-radius:.6rem;background:#a6eaff;color:#102137;font:inherit}textarea{display:block;width:100%;height:8rem}[hidden]{display:none}</style>

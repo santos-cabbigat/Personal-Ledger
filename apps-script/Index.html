@@ -7,6 +7,7 @@ main{padding-top:12px}header.hero{min-height:91px;position:relative;isolation:is
 .orb{position:absolute;right:32px;top:-20px;width:124px;height:124px;border-radius:50%;opacity:.65;z-index:-1;background:radial-gradient(circle,#80dcff 1px,transparent 1.6px) 0 0/5px 5px,radial-gradient(at 35% 30%,#7b3385,#234c80 50%,transparent 72%);mask-image:radial-gradient(circle at 56% 42%,#000 18%,#0008 48%,transparent 72%);transform:rotate(-20deg)}
 .hero .gear{background:#111b32c9}.tiles{margin:14px 0 16px}.tiles button{display:flex;align-items:center;gap:8px;font-size:15px}.tiles i{display:grid;place-items:center;width:22px}.tiles svg{width:19px;height:19px;fill:none;stroke:#b4e9ff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .panel{background:linear-gradient(110deg,#1c203c,#131e36);border-top-color:#927acc}.kpi{font-size:30px}.status{margin-top:8px;color:#c3b6f2}.item{border-color:#273552}button{touch-action:manipulation}button:active{filter:brightness(1.22)}h2{letter-spacing:-.02em}
+.statement{color:#23213b;background:#fff;border-radius:16px;overflow:hidden;text-align:left;font-variant-numeric:tabular-nums}.statementHead{background:linear-gradient(112deg,#191e38,#483870);padding:23px 20px;color:white;border-bottom:4px solid #8cded3}.statementHead small{color:#d6fcf7;font-size:10px;font-weight:750;letter-spacing:.14em}.statementHead h2{font-size:29px;color:white;margin:6px 0}.statementHead p{margin:0;color:#e7def9;font-size:14px}.statement section,.statement footer{padding:16px 20px}.statement section+section{border-top:1px solid #e6e3ef}.statement h3{font-size:16px;margin:0 0 12px;color:#46346a}.statement .closing{background:#e1f5f0;border-left:4px solid #408a80;padding:10px 14px;display:grid;gap:2px;margin:0 0 13px}.closing span,.metrics small{font-size:12px;color:#514d65}.closing strong{font-size:27px;overflow-wrap:anywhere}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metrics small,.metrics b{display:block}.metrics b{font-size:clamp(12px,2.6vw,17px);overflow-wrap:anywhere}.statement h4{margin:12px 0 4px;color:#51416b;font-size:13px}.rline{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #efedf3;font-size:13px}.statement footer{background:#f0edf7;color:#514467;font-size:12px}.reportClean .statement{border-radius:3px}.reportClean>header{display:none}.reportClean{background:#fff;padding:4px}.reportClean .body{margin:0}.reportClean .actions{padding:4px}.reportClean .actions button{font-size:12px}.reportClean [hidden]{display:none}
 </style></head><body><main><header class="hero"><div class="orb" aria-hidden="true"></div><h1 id="title">Shared ledger</h1><button class="gear" aria-label="Settings" onclick="settings()">⚙</button></header><nav class="tiles"><button onclick="journals()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2zM8 4v16m3-11h5m-5 4h4"/></svg></i>Journal</button><button onclick="accountsView()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="5" rx="1"/><path d="M12 8v4M5 15v-3h14v3"/><rect x="2" y="15" width="6" height="5" rx="1"/><rect x="16" y="15" width="6" height="5" rx="1"/></svg></i>Accounts</button><button onclick="entryForm('Expense')"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg></i>Expense</button><button onclick="reports()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 17v-4h3v4m3 0V8h3v9m3 0V4h3v13"/></svg></i>Reports</button></nav><div class="row"><select id="scope" aria-label="Home book" onchange="home()"><option value="">All books</option></select><button onclick="load()">Refresh</button></div><div class="status" id="status" role="status"></div><div id="homeData"></div></main><dialog id="modal"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <!--ledger-state--><script>
 'use strict';
@@ -52,7 +53,7 @@ function connectButtons(){
 }
 function connectDrive(){dialog('Connect Google Drive','<p>Open your own ledger, or create an empty one in My Drive → Personal &amp; Business Ledger.</p>'+btn('Connect',"write('connectPersonalDrive',[])",true));}
 function existingLedgerForm(){dialog('Open existing ledger',field('Link to your ledger spreadsheet','<input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/…">')+btn('Open',"write('openExistingLedger',[el('sheetUrl').value])",true));}
-function dialog(title,html){el('heading').textContent=title;el('content').innerHTML=html;el('err').textContent='';if(!el('modal').open)el('modal').showModal();el('modal').scrollTop=0}
+function dialog(title,html){el('modal').classList.remove('reportClean');el('heading').textContent=title;el('content').innerHTML=html;el('err').textContent='';if(!el('modal').open)el('modal').showModal();el('modal').scrollTop=0}
 function closeDialog(){if(!locked)el('modal').close()}
 el('modal').addEventListener('cancel',event=>{if(locked)event.preventDefault()});
 function guard(f){try{f()}catch(e){el('err').textContent=e.message}}
@@ -106,14 +107,33 @@ function idPicker(groups){
     posted.map(([line])=>'<option value="'+data.entries.indexOf(line)+'">'+esc(line.id)+' · '+esc(line.memo)+'</option>').join('')+'</select>');
 }
 function journals(){if(!ready())return;const groups=groupEntries(filtered());dialog('Journal','<div class="actions">'+btn('New entry',"entryForm('Journal')",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
-function accountsView(){if(!ready())return;dialog('Chart of accounts',btn('Add account','newAccount()',true)+btn('Download accounts CSV','downloadAccounts()')+data.accounts.map((a,i)=>'<button class="item" onclick="accountDetail('+i+')"><strong>'+esc(a.code)+' · '+esc(a.name)+'</strong><br><small>'+esc(a.type)+' · '+esc(a.use)+(a.parent?' · Parent '+esc(a.parent):'')+'</small></button>').join(''))}
-function accountDetail(i){let a=data.accounts[i];let codes=new Set([a.code]);for(let j=0;j<data.accounts.length;j++){let n=codes.size;data.accounts.forEach(v=>{if(codes.has(v.parent))codes.add(v.code)});if(n===codes.size)break}dialog(a.name,entryList(groupEntries(filtered().filter(r=>codes.has(r.code)))))}
+function inBook(account,book){return account.book===undefined || account.book===book}
+function chartFor(book){return data.accounts.filter(a=>inBook(a,book))}
+function accountsView(chosen){
+  if(!ready())return;
+  const book=chosen||el('scope').value||data.books[0];
+  const accounts=chartFor(book);
+  dialog('Chart of accounts',field('Book','<select id="chartBook" onchange="accountsView(this.value)">'+options(data.books,book)+'</select>')+
+    btn('Add account','newAccount()')+btn('Download accounts CSV','downloadAccounts()')+
+    (accounts.map(a=>'<button class="item" onclick="accountDetail('+data.accounts.indexOf(a)+')"><strong>'+esc(a.code)+' · '+esc(a.name)+'</strong><br><small>'+esc([a.type,a.use,a.role,a.parent?'Parent '+a.parent:''].filter(Boolean).join(' · '))+'</small></button>').join('')||'<p>No accounts in this book yet.</p>'));
+}
+function accountDetail(i){
+  const a=data.accounts[i],book=el('chartBook').value,chart=chartFor(book),codes=new Set(a.use==='Posting'?[a.code]:[]);
+  if(a.use==='Group'){
+    const parents=new Set([a.code]);
+    for(let n=0;n<chart.length;n++){const previous=parents.size;for(const child of chart)if(parents.has(child.parent))(child.use==='Group'?parents:codes).add(child.code);if(parents.size===previous)break;}
+  }
+  dialog(a.name,entryList(groupEntries(data.entries.filter(r=>r.book===book && codes.has(r.code)))));
+}
 function acOptions(list,current){return list.map(a=>'<option value="'+esc(a.code)+'" '+(a.code===current?'selected':'')+'>'+esc(a.code)+' · '+esc(a.name)+'</option>').join('')}
-function newAccount(){dialog('Add account',field('Code','<input id="code" inputmode="numeric">')+field('Name','<input id="accountName" maxlength="80">')+field('Classification','<select id="classify" onchange="parents()">'+options(['Asset','Liability','Equity','Income','Expense'])+'</select>')+field('Parent account','<select id="parent"></select>')+field('Use','<select id="use">'+options(['Posting','Group'])+'</select>')+btn('Save account','addAccount()',true));parents()}
-function parents(){el('parent').innerHTML='<option value="">No parent</option>'+acOptions(data.accounts.filter(a=>a.use==='Group'&&a.type===el('classify').value))}
+function newAccount(){
+  const book=el('chartBook').value;
+  dialog('Add account',field('Book type','<select id="accountBook" onchange="parents()">'+options(data.books,book)+'</select>')+field('Code','<input id="code" inputmode="numeric">')+field('Name','<input id="accountName" maxlength="80">')+field('Classification','<select id="classify" onchange="parents()">'+options(['Asset','Liability','Equity','Income','Expense'])+'</select>')+field('Parent account','<select id="parent"></select>')+field('Use','<select id="use" onchange="parents()">'+options(['Posting','Group'])+'</select>')+field('Cash / bank role','<select id="role"><option value="">None</option>'+options(['Bank','Cash'])+'</select>')+btn('Save account','addAccount()',true));parents();
+}
+function parents(){el('parent').innerHTML='<option value="">No parent</option>'+acOptions(chartFor(el('accountBook').value).filter(a=>a.type===el('classify').value&&a.use==='Group'));el('role').disabled=el('classify').value!=='Asset'||el('use').value!=='Posting';if(el('role').disabled)el('role').value=''}
 async function write(method,args,after){if(locked)return;locked=true;el('err').textContent='Saving…';let result;try{result=await call(method,...args)}catch(e){el('err').textContent=e.message;locked=false;return}locked=false;el('modal').close();await load();if(after&&data)after(result)}
-function addAccount(){write('saveAccount',[{ledgerId:data.ledgerId,code:el('code').value,name:el('accountName').value,type:el('classify').value,parent:el('parent').value,use:el('use').value}],accountsView)}
-function entryForm(mode,keep=false){if(!ready())return;if(!keep){draft={mode,key:crypto.randomUUID(),ledgerId:data.ledgerId,reference:'',project:projectFilter,category:categoryFilter,book:el('scope').value||data.books[0]||'',date:data.today,memo:'',lines:[{code:mode==='Expense'?'5100':'1100',debit:'',credit:''},{code:mode==='Expense'?'1100':'4100',debit:'',credit:''}]}}dialog(draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':mode==='Expense'?'Record expense':'New journal entry','<div class="two">'+field('Book','<select id="book">'+options([...new Set([...data.books,draft.book].filter(Boolean))],draft.book)+'</select>')+field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+field('Project (optional)','<input id="project" list="projectNames" maxlength="80" value="'+esc(draft.project)+'" placeholder="Choose or type a project name"><datalist id="projectNames">'+options(projects(),draft.project)+'</datalist>')+field('Category (optional)','<input id="category" list="categoryNames" maxlength="80" value="'+esc(draft.category)+'" placeholder="Choose or type a category"><datalist id="categoryNames">'+options(categories(),draft.category)+'</datalist>')+field('Reference (optional)','<input id="reference" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(draft.reference)+'" placeholder="Receipt or bank transfer number">')+field('Description','<input id="memo" maxlength="180" value="'+esc(draft.memo)+'">')+'<div id="lines"></div><div class="actions">'+(mode==='Journal'?btn('Add line','addLine()'):'')+btn('Review','guard(review)',true)+'</div>');drawLines()}
+function addAccount(){const book=el('accountBook').value;write('saveAccount',[{ledgerId:data.ledgerId,book,role:el('role').value,code:el('code').value,name:el('accountName').value,type:el('classify').value,parent:el('parent').value,use:el('use').value}],()=>accountsView(book))}
+function entryForm(mode,keep=false){if(!ready())return;if(!keep){draft={mode,key:crypto.randomUUID(),ledgerId:data.ledgerId,reference:'',project:projectFilter,category:categoryFilter,book:el('scope').value||data.books[0]||'',date:data.today,memo:'',lines:[{code:mode==='Expense'?'5100':'1100',debit:'',credit:''},{code:mode==='Expense'?'1100':'4100',debit:'',credit:''}]}}dialog(draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':mode==='Expense'?'Record expense':'New journal entry','<div class="two">'+field('Book','<select id="book" onchange="changeEntryBook()">'+options([...new Set([...data.books,draft.book].filter(Boolean))],draft.book)+'</select>')+field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+field('Project (optional)','<input id="project" list="projectNames" maxlength="80" value="'+esc(draft.project)+'" placeholder="Choose or type a project name"><datalist id="projectNames">'+options(projects(),draft.project)+'</datalist>')+field('Category (optional)','<input id="category" list="categoryNames" maxlength="80" value="'+esc(draft.category)+'" placeholder="Choose or type a category"><datalist id="categoryNames">'+options(categories(),draft.category)+'</datalist>')+field('Reference (optional)','<input id="reference" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(draft.reference)+'" placeholder="Receipt or bank transfer number">')+field('Description','<input id="memo" maxlength="180" value="'+esc(draft.memo)+'">')+'<div id="lines"></div><div class="actions">'+(mode==='Journal'?btn('Add line','addLine()'):'')+btn('Review','guard(review)',true)+'</div>');drawLines()}
 function formatAmount(value){
   const parts=String(value??'').replace(/,/g,'').split('.');
   if(parts.length>2 || !/^\d*$/.test(parts[0]) || (parts.length===2 && !/^\d*$/.test(parts[1])))return String(value);
@@ -140,7 +160,11 @@ function upperReference(input){
 function amountInput(id,value){
   return '<input inputmode="decimal" id="'+id+'" oninput="formatTyping(this)" value="'+esc(formatAmount(value))+'">';
 }
-function drawLines(){const list=data.accounts.filter(a=>a.use==='Posting');if(draft.mode==='Expense'){el('lines').innerHTML=field('Expense account','<select id="ac0">'+acOptions(list.filter(a=>a.type==='Expense'),draft.lines[0].code)+'</select>')+field('Paid from','<select id="ac1">'+acOptions(list.filter(a=>a.type==='Asset'||a.type==='Liability'),draft.lines[1].code)+'</select>')+field('Amount (LAK)',amountInput('expAmount',draft.lines[0].debit));return}
+function changeEntryBook(){
+  const previous=draft.book;readForm();if(previous===draft.book)return;
+  draft.lines.forEach(line=>{line.code=''});drawLines();
+}
+function drawLines(){const list=chartFor(draft.book).filter(a=>a.use==='Posting');if(draft.mode==='Expense'){el('lines').innerHTML=field('Expense account','<select id="ac0">'+acOptions(list.filter(a=>a.type==='Expense'),draft.lines[0].code)+'</select>')+field('Paid from','<select id="ac1">'+acOptions(list.filter(a=>a.type==='Asset'||a.type==='Liability'),draft.lines[1].code)+'</select>')+field('Amount (LAK)',amountInput('expAmount',draft.lines[0].debit));return}
 el('lines').innerHTML=draft.lines.map((l,i)=>'<div class="line">'+field('Account','<select id="ac'+i+'">'+acOptions(list,l.code)+'</select>')+'<div class="two">'+field('Debit',amountInput('dr'+i,l.debit))+field('Credit',amountInput('cr'+i,l.credit))+'</div><details '+(l.reference||l.lineMemo?'open':'')+'><summary>Line description or reference</summary>'+field('Line description','<input id="lineMemo'+i+'" maxlength="180" value="'+esc(l.lineMemo)+'">')+field('Line reference','<input id="lineRef'+i+'" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(l.reference)+'">')+'</details>'+(draft.lines.length>2?btn('Remove','removeLine('+i+')'):'')+'</div>').join('')}
 function readForm(){draft.book=el('book').value;draft.date=el('date').value;draft.reference=el('reference').value.trim();draft.memo=el('memo').value.trim();draft.project=el('project').value.trim();draft.category=el('category').value.trim();draft.lines.forEach((l,i)=>{l.code=el('ac'+i).value;if(draft.mode==='Expense'){l.debit=i===0?el('expAmount').value.replace(/,/g,''):'';l.credit=i===1?el('expAmount').value.replace(/,/g,''):''}else{l.lineMemo=el('lineMemo'+i).value.trim();l.reference=el('lineRef'+i).value.trim();l.debit=el('dr'+i).value.replace(/,/g,'').trim();l.credit=el('cr'+i).value.replace(/,/g,'').trim()}})}
 function addLine(){readForm();if(draft.lines.length<40){draft.lines.push({code:'',debit:'',credit:''});drawLines()}}
@@ -148,7 +172,7 @@ function removeLine(i){readForm();draft.lines.splice(i,1);drawLines()}
 function review(){readForm();if(!draft.memo||!draft.date)throw Error('Enter a date and description.');
 let dr=0,cr=0;for(const l of draft.lines){for(const n of [l.debit,l.credit])if(n&&!/^(0|[1-9]\d{0,10})(\.\d{1,2})?$/.test(n))throw Error('Enter amounts with up to two decimals.');if((+l.debit>0)===(+l.credit>0))throw Error('Each account needs either a debit or a credit.');dr+=Math.round(l.debit*100);cr+=Math.round(l.credit*100)}
 if(dr!==cr||!dr||new Set(draft.lines.map(l=>l.code)).size<2)throw Error('Debits and credits must balance across at least two accounts.');
-const lines=draft.lines.map(l=>({...l,reference:l.reference||draft.reference,name:data.accounts.find(a=>a.code===l.code).name}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,draft.project,draft.category,displayDate(draft.date)].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(draft.mode,true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
+const lines=draft.lines.map(l=>({...l,reference:l.reference||draft.reference,name:chartFor(draft.book).find(a=>a.code===l.code && a.use==='Posting')?.name||''}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,draft.project,draft.category,displayDate(draft.date)].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(draft.mode,true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
 function post(){
   write('postEntry',[draft],id=>{
     draft=null;
@@ -156,15 +180,15 @@ function post(){
     if(index>=0)detail(index);
   });
 }
-function reports(){if(!ready())return;dialog('Reports',field('Report','<select id="report" onchange="reportData()">'+options(['Trial balance','Income and expenses','Balance sheet','General ledger'])+'</select>')+'<div class="two">'+field('From','<input type="date" id="from" onchange="reportData()">')+field('Through','<input type="date" id="through" onchange="reportData()">')+'</div><div id="result"></div>'+btn('Download report CSV','downloadReport()'));reportData()}
+function reports(){if(!ready())return;dialog('Reports',btn('Monthly financial report','monthlyReport()',true)+field('Book','<select id="reportBook" onchange="reportData()"><option value="">All books</option>'+options(data.books,el('scope').value)+'</select>')+field('Report','<select id="report" onchange="reportData()">'+options(['Trial balance','Income and expenses','Balance sheet','General ledger'])+'</select>')+'<div class="two">'+field('From','<input type="date" id="from" onchange="reportData()">')+field('Through','<input type="date" id="through" onchange="reportData()">')+'</div><div id="result"></div>'+btn('Download report CSV','downloadReport()'));reportData()}
 let reportExport;
 function reportData(){
   const kind=el('report').value,from=el('from').value,to=el('through').value,asOf=kind==='Balance sheet';
   el('from').disabled=asOf;
   reportExport=null;
   if(!asOf&&from&&to&&from>to){el('result').textContent='Choose an end date on or after the start date.';return;}
-  const rows=filtered().filter(r=>!r.sheetDraft).filter(r=>(asOf||!from||r.date>=from)&&(!to||r.date<=to));
-  const accounts=data.accounts.filter(a=>a.use==='Posting');
+  const chosen=el('reportBook').value;
+  const rows=data.entries.filter(r=>!r.sheetDraft && (!chosen||r.book===chosen) && (!projectFilter||r.project===projectFilter) && (!categoryFilter||r.category===categoryFilter)).filter(r=>(asOf||!from||r.date>=from)&&(!to||r.date<=to));
   let headers,records=[],moneyColumns=[];
   if(kind==='Income and expenses'||asOf){
     headers=['Item','Amount (LAK)'];moneyColumns=[1];
@@ -173,23 +197,61 @@ function reportData(){
       [['Income',inc],['Expenses',exp],['Net income',inc-exp]];
   }else if(kind==='General ledger'){
     headers=['Code','Account','Date','Book','Project','Category','Description','Reference','Debit (LAK)','Credit (LAK)'];moneyColumns=[8,9];
-    for(const account of accounts)for(const line of rows.filter(r=>r.code===account.code)){
-      records.push([account.code,account.name,displayDate(line.date),line.book,line.project||'',line.category||'',line.lineMemo||line.memo,line.reference||'',line.debit,line.credit]);
-    }
+    for(const book of data.books.filter(b=>!chosen||b===chosen))
+      for(const account of chartFor(book).filter(a=>a.use==='Posting'))
+        for(const line of rows.filter(r=>r.book===book&&r.code===account.code).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id))){
+          records.push([account.code,account.name,displayDate(line.date),book,line.project||'',line.category||'',line.lineMemo||line.memo,line.reference||'',line.debit,line.credit]);
+        }
   }else{
-    headers=['Code','Account','Debit (LAK)','Credit (LAK)'];moneyColumns=[2,3];
-    let totalDr=0,totalCr=0;
-    for(const account of accounts){
-      const cents=rows.filter(r=>r.code===account.code).reduce((sum,r)=>sum+Math.round(r.debit*100)-Math.round(r.credit*100),0);
-      if(cents){const dr=Math.max(cents,0),cr=Math.max(-cents,0);records.push([account.code,account.name,dr/100,cr/100]);totalDr+=dr;totalCr+=cr;}
+    headers=['Book','Code','Account','Debit (LAK)','Credit (LAK)'];moneyColumns=[3,4];
+    for(const book of data.books.filter(b=>!chosen||b===chosen)){
+      let drTotal=0,crTotal=0;
+      for(const account of chartFor(book).filter(a=>a.use==='Posting')){
+        const cents=rows.filter(r=>r.book===book && r.code===account.code).reduce((sum,r)=>sum+Math.round(r.debit*100)-Math.round(r.credit*100),0);
+        if(!cents)continue;
+        const dr=Math.max(cents,0),cr=Math.max(-cents,0);records.push([book,account.code,account.name,dr/100,cr/100]);drTotal+=dr;crTotal+=cr;
+      }
+      records.push([book,'','Total',drTotal/100,crTotal/100]);
     }
-    records.push(['','Total',totalDr/100,totalCr/100]);
   }
-  const scope=[el('scope').value||'All books',projectFilter||'All projects',categoryFilter||'All categories',asOf?'Beginning':from||'Beginning',to||'All dates'];
+  const scope=[chosen||'All books',projectFilter||'All projects',categoryFilter||'All categories',asOf?'Beginning':from||'Beginning',to||'All dates'];
   const html='<div class="table"><table><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+
     records.map(row=>'<tr>'+row.map((v,i)=>'<td>'+esc(moneyColumns.includes(i)?amount(v):v)+'</td>').join('')+'</tr>').join('')+'</table></div>';
   el('result').innerHTML='<p class="sub">'+esc(scope.join(' · '))+'</p>'+html;
   reportExport={name:kind,rows:[[kind],['Book','Project','Category','From','Through'],scope,[],headers,...records]};
+}
+function monthlyReport(book,month,clean=false){
+  book=book||el('reportBook')?.value||el('scope').value||(data.books.includes('Project 1')?'Project 1':data.books[0]);
+  month=month||data.today.slice(0,7);
+  const chart=chartFor(book),accountMap=new Map(chart.filter(a=>a.use==='Posting').map(a=>[a.code,a]));
+  const groupMap=new Map(chart.filter(a=>a.use==='Group').map(a=>[a.code,a.name]));
+  const entries=data.entries.filter(r=>r.book===book),posted=entries.filter(r=>!r.sheetDraft);
+  const period=r=>r.date.slice(0,7)===month,inMonth=posted.filter(period);
+  const banks=posted.filter(r=>accountMap.get(r.code)?.role==='Bank');
+  const opening=banks.filter(r=>r.date.slice(0,7)<month).reduce((s,r)=>s+Math.round(r.debit*100)-Math.round(r.credit*100),0)/100;
+  const movement=banks.filter(period),sum=(lines,side)=>lines.reduce((s,r)=>s+Math.round(r[side]*100),0)/100;
+  const received=sum(movement,'debit'),spent=sum(movement,'credit');
+  const income=-net(inMonth,'Income'),expense=net(inMonth,'Expense'),groups=new Map();
+  for(const r of inMonth){
+    if(!['Income','Expense'].includes(r.type))continue;
+    const parent=groupMap.get(accountMap.get(r.code)?.parent)||r.type;
+    const key=r.type+'|'+parent, group=groups.get(key)||{type:r.type,name:parent,accounts:new Map()};groups.set(key,group);
+    const delta=(Math.round(r.debit*100)-Math.round(r.credit*100))*(r.type==='Income'?-1:1);
+    group.accounts.set(r.name,(group.accounts.get(r.name)||0)+delta);
+  }
+  const metric=(label,value)=>'<div><small>'+esc(label)+'</small><b>'+esc(amount(value))+'</b></div>';
+  const periodLabel=new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01T00:00:00Z'));
+  const postedCount=new Set(inMonth.map(r=>r.id)).size,pending=new Set(entries.filter(r=>r.sheetDraft&&period(r)).map(r=>r.id)).size;
+  const details=[...groups.values()].sort((a,b)=>b.type.localeCompare(a.type)||a.name.localeCompare(b.name)).map(g=>'<h4>'+esc(g.name)+'</h4>'+[...g.accounts].sort((a,b)=>a[0].localeCompare(b[0])).map(([name,c])=>'<div class="rline"><span>'+esc(name)+'</span><b>'+esc(amount(c/100))+'</b></div>').join('')).join('');
+  const command='monthlyReport(el(\'monthBook\').value,el(\'monthPeriod\').value';
+  const controls='<div class="monthControls two" '+(clean?'hidden':'')+'>'+field('Book','<select id="monthBook" onchange="'+command+')">'+options(data.books,book)+'</select>')+field('Month','<input id="monthPeriod" type="month" value="'+esc(month)+'" onchange="if(this.value)'+command+')">')+'</div>';
+  const sheet='<article class="statement"><div class="statementHead"><small>MONTHLY FINANCIAL REPORT</small><h2>'+esc(book)+'</h2><p>'+esc(periodLabel)+' · Lao kip</p></div>'+
+    '<section><h3>Bank movement</h3><div class="closing"><span>Closing bank balance</span><strong>'+esc(amount(opening+received-spent))+'</strong></div><div class="metrics">'+metric('Opening balance',opening)+metric('Money in',received)+metric('Money out',spent)+'</div></section>'+
+    '<section><h3>Income &amp; expenses</h3><div class="metrics">'+metric('Income',income)+metric('Expenses',expense)+metric('Net activity',income-expense)+'</div></section>'+
+    '<section><h3>Account breakdown</h3>'+(details||'<p>No posted income or expenses this month.</p>')+'</section>'+
+    '<footer>Posted entries: '+postedCount+(pending?' · Balanced drafts excluded: '+pending:'')+'</footer></article>';
+  dialog('Monthly report',controls+sheet+'<div class="actions">'+btn(clean?'Show controls':'Screenshot view',command+','+(!clean)+')')+'</div>');
+  el('modal').classList.toggle('reportClean',clean);
 }
 function csv(name,rows){
   const escapeCell=value=>{
@@ -203,7 +265,7 @@ function csv(name,rows){
 }
 function downloadReport(){if(reportExport)csv(reportExport.name,reportExport.rows);}
 function downloadJournal(){csv('Journal',[['Entry ID','Date','Book','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Project','Category','Reference'],...filtered().map(r=>[r.id,r.date,r.book,r.lineMemo||r.memo,r.code,r.name,r.type,r.debit,r.credit,r.by,r.project,r.category,r.reference])]);}
-function downloadAccounts(){csv('Accounts',[['Code','Account name','Classification','Parent code','Use'],...data.accounts.map(a=>[a.code,a.name,a.type,a.parent,a.use])]);}
+function downloadAccounts(){const book=el('chartBook').value;csv('Accounts - '+book,[['Book','Code','Account name','Classification','Parent code','Use','Cash / bank'],...chartFor(book).map(a=>[book,a.code,a.name,a.type,a.parent,a.use,a.role])]);}
 function bookSettings(){
   return field('Book types','<span class="sub">'+esc(data.books.join(' · '))+'</span><input id="newBookType" maxlength="80" placeholder="New book name">')+
     btn('Add book type','saveBookTypeFromForm()');

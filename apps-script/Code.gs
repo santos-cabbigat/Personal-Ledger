@@ -94,7 +94,7 @@ function bookTabs_(sheet){
   });
 }
 function validTabName_(name){
-  if(!name || name.length>80 || /[:\\/\?\*\[\]]/.test(name) || ['overview','settings','accounts','journal'].includes(name.toLowerCase()))
+  if(!name || name.length>80 || /[:\\/\?\*\[\]]/.test(name) || ['overview','settings','accounts','journal','general ledger','trial balance','monthly report','report data'].includes(name.toLowerCase()))
     throw Error('Use a unique book name suitable for a Sheet tab, up to 80 characters.');
 }
 function formatBookJournal_(sheet,tab,fresh){
@@ -115,6 +115,7 @@ function formatBookJournal_(sheet,tab,fresh){
     tab.getRange(2,4,n,1).setFormulas(formulas.map(row=>[row[0]]));
     tab.getRange(2,6,n,1).setFormulas(formulas.map(row=>[row[1]]));
   }
+  tab.getRange('A1:O1').setBackground('#191e38').setFontColor('#f5f2ff').setFontWeight('bold');
   tab.getRange('B2:B').setNumberFormat('dd-mmm-yyyy');
   tab.getRange('A1').setNote('Choose an account to start an entry. The same ID continues until the entry balances.');
   tab.getRange('R1').setValue('Draft running balance');
@@ -128,14 +129,14 @@ function formatBookJournal_(sheet,tab,fresh){
   const ranges=[tab.getRange('A2:O')];
   const rule=(formula,color)=>SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(formula).setBackground(color).setRanges(ranges);
   const others=tab.getConditionalFormatRules().filter(r=>!String(r.getBooleanCondition()?.getCriteriaValues()[0]||'').includes('ROW()=2'));
-  tab.setConditionalFormatRules([rule(starts,'#c7e0f5').setBold(true).build(),rule(next,'#fff0b5').build(),...others]);
+  tab.setConditionalFormatRules([rule(starts,'#e8e1fa').setBold(true).build(),rule(next,'#d4f4f3').build(),...others]);
 }
 function syncBookTabs_(sheet){
   const known=bookNames_(sheet);
   for(const name of known){
     validTabName_(name);
     let tab=sheet.getSheetByName(name);
-    if(!tab){tab=sheet.insertSheet(name);formatBookJournal_(sheet,tab,true);}
+    if(!tab){tab=sheet.insertSheet(name);formatBookJournal_(sheet,tab,true);if(sheet.getSheetByName('Report Data'))configureBookChart_(tab);}
     else if(tab.getRange('A1').getDisplayValue()!=='Entry ID'){
       if(tab.getRange('A1:R1').isBlank() && tab.getLastRow()===0)formatBookJournal_(sheet,tab,true);
       else throw Error('The tab named '+name+' is already used for something else.');
@@ -148,6 +149,7 @@ function syncBookTabs_(sheet){
     return '=IFERROR(LET(values,'+stack+',SORT(UNIQUE(FILTER(values,values<>"")))),"")';
   };
   sheet.getSheetByName('Settings').getRange('G2:I2').setFormulas([[distinct('A'),distinct('M'),distinct('O')]]);
+  if(sheet.getSheetByName('Report Data'))refreshReportSource_(sheet);
 }
 function useProjectOneJournal(){
   const sheet=SpreadsheetApp.getActiveSpreadsheet();
@@ -379,7 +381,7 @@ function onEdit(e){
   const shift=dedicated?1:0;
   if(range.getLastRow()<2 || !(dedicated?[1,2,3,4,5,6,7,8,9,13,15]:[1,2,3,4,5,6,7,8,9,13,15,18]).some(c=>firstCol<=c && lastCol>=c))return;
   lock_(()=>{
-    const chart=accounts_(e.source).filter(a=>a.use==='Posting');
+    const chart=accounts_(e.source).filter(a=>a.use==='Posting' && (!dedicated || accountInBook_(a,tab.getName())));
     const refCol=dedicated?3:18;
     if(firstCol<=refCol && lastCol>=refCol){
       const start=Math.max(2,range.getRow()), count=range.getLastRow()-start+1;
@@ -512,6 +514,7 @@ function setupNewBook_(sheet) {
   setupBookPickers_(sheet);
   ensureJournalPresentation_(sheet);
   migrateSingleBook_(sheet,'Personal');
+  installBookReports_(sheet,'Personal',false);
 }
 function connectPersonalDrive() {
   const email = signedIn_(), lock=LockService.getUserLock();
@@ -546,8 +549,10 @@ function rows_(sheet, name, columns) {
 function date_(value) {
   return value instanceof Date ? Utilities.formatDate(value,'Asia/Vientiane','yyyy-MM-dd') : String(value);
 }
+function accountInBook_(account,book){return account.book===undefined || account.book===book;}
 function accounts_(sheet) {
-  return rows_(sheet,'Accounts',5).filter(r=>r[0] !== '').map(r=>({code:String(r[0]),sheetCode:r[0], name:String(r[1]),type:String(r[2]),parent:String(r[3]),use:String(r[4])}));
+  const scoped=sheet.getSheetByName('Accounts').getRange('F1').getDisplayValue()==='Book type';
+  return rows_(sheet,'Accounts',7).filter(r=>r[0] !== '').map(r=>({code:String(r[0]),sheetCode:r[0], name:String(r[1]),type:String(r[2]),parent:String(r[3]),use:String(r[4]),book:scoped?String(r[5]||''):undefined,role:String(r[6]||'')}));
 }
 function revision_(rows) {
   return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,JSON.stringify(rows)));
@@ -579,7 +584,8 @@ function journalState_(sheet, accounts,bookTab) {
   }
 
   const warnings=[];
-  const chart = new Map(accounts.map(a=>[a.code,a]));
+  if(bookTab)accounts=accounts.filter(a=>accountInBook_(a,bookTab.getName()));
+  const chart = new Map(accounts.filter(a=>a.use==='Posting').map(a=>[a.code,a]));
   const tz=sheet.getSpreadsheetTimeZone(),books=bookNames_(sheet);
   const groups=journalGroups_(journalRows_(sheet,bookTab));
   const entries=[];
@@ -649,10 +655,14 @@ function saveAccount(input) {
     const {sheet}=context_(), accounts=accounts_(sheet);
     checkLedger_(sheet,input.ledgerId);
     const code=String(input.code||'').trim(), name=text_(input.name,80),parent=String(input.parent||'');
-    if(!/^[1-9]\d{1,9}$/.test(code)||accounts.some(a=>a.code===code)) throw Error('Use a new numeric code (2–10 digits).');
+    const book=String(input.book||'');
+    if(!bookNames_(sheet).includes(book))throw Error('Choose a book for this account.');
+    if(!/^[1-9]\d{1,9}$/.test(code)||accounts.some(a=>accountInBook_(a,book)&&a.code===code)) throw Error('Use a new numeric code (2–10 digits).');
     if(!TYPES.includes(input.type)||!['Group','Posting'].includes(input.use)) throw Error('Choose a valid classification and use.');
-    if(parent && !accounts.some(a=>a.code===parent&&a.type===input.type&&a.use==='Group')) throw Error('Choose a parent group of the same classification.');
-    sheet.getSheetByName('Accounts').appendRow([code,name,input.type,parent,input.use]);
+    if(parent && !accounts.some(a=>accountInBook_(a,book)&&a.code===parent&&a.type===input.type&&a.use==='Group')) throw Error('Choose a parent group of the same classification.');
+    const role=String(input.role||'');
+    if(role && (!['Bank','Cash'].includes(role) || input.type!=='Asset' || input.use!=='Posting'))throw Error('Bank and cash roles require a posting asset.');
+    sheet.getSheetByName('Accounts').appendRow([code,name,input.type,parent,input.use,book,role]);
     return code;
   });
 }
@@ -671,7 +681,7 @@ function makeLines_(sheet,input,id,posted,originalBook) {
   const memo=text_(input.memo,180), project=input.project ? text_(input.project,80) : '';
   const category=input.category ? text_(input.category,80) : '';
   if (!Array.isArray(input.lines)||input.lines.length<2||input.lines.length>40) throw Error('Use 2–40 journal lines.');
-  const accounts=new Map(accounts_(sheet).filter(a=>a.use==='Posting').map(a=>[a.code,a]));
+  const accounts=new Map(accounts_(sheet).filter(a=>a.use==='Posting' && accountInBook_(a,input.book)).map(a=>[a.code,a]));
   let debits=0,credits=0;const used=new Set();
   const rows=input.lines.map(line=>{
     const account=accounts.get(String(line.code)),dr=cents_(line.debit),cr=cents_(line.credit);

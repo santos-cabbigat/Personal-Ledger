@@ -211,3 +211,15 @@ test('a later edit repairs earlier balanced ID gaps without attributing the post
     [0,1,'2611-09A005',true],[2,5,'2611-09A006',true],[6,7,'2611-10A001',true],[8,8,'2611-11A001',false]]);
   assert.deepEqual(Array.from(plan[0].changes,c=>c.index),[1]);
 });
+
+test('posting resolves duplicate account codes within the chosen book',()=>{
+  const {api,book}=fixture();
+  api.accounts_=()=>[
+    ...accounts.map(a=>({...a,book:'Personal'})),
+    {code:'1100',name:'Business cash',type:'Asset',book:'Business',use:'Posting'},
+    {code:'3100',name:'Business opening',type:'Equity',book:'Business',use:'Posting'}
+  ];
+  const input={...draft(),book:'Business',lines:[{code:'1100',debit:23},{code:'3100',credit:23}]};
+  assert.equal(api.makeLines_(book,input,'test',['signed','time','request'])[0][5],'Business cash');
+  assert.throws(()=>api.makeLines_(book,{...input,lines:[{code:'5100',debit:23},{code:'1100',credit:23}]},'test',[]),/posting account/);
+});

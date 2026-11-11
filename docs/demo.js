@@ -7,11 +7,11 @@ const demoAccounts = [
  ['5000','Expenses','Expense','','Group'],['5100','Household expenses','Expense','5000','Posting'],['5200','Business supplies','Expense','5000','Posting'],['5300','Utilities','Expense','5000','Posting']
 ].map(([code,name,type,parent,use])=>({code,name,type,parent,use}));
 const sampleDay = offset=>new Date(Date.now()+7*3600000-offset*86400000).toISOString().slice(0,10);
-const previewData={title:'Personal & Business Ledger',owner:true,books:['Personal','Business'],ledgerId:'demo',accounts:demoAccounts,entries:[],today:sampleDay(0)};
+const previewData={title:'Personal & Business Ledger',owner:true,books:['Personal','Business'],ledgerId:'demo',accounts:['Personal','Business'].flatMap(book=>demoAccounts.map(a=>({...a,book,role:a.code==='1110'?'Bank':a.code==='1100'?'Cash':''}))),entries:[],today:sampleDay(0)};
 const savedKeys=new Map();
 function recordSample(id,date,book,memo,lines,project='',revision=id,category='',reference=''){
  const records=lines.map(l=>{
-   const a=previewData.accounts.find(a=>a.code===l.code&&a.use==='Posting');
+   const a=previewData.accounts.find(a=>a.book===book&&a.code===l.code&&a.use==='Posting');
    if(!a)throw Error('Choose a posting account.');
    return {id,date,book,memo,lineMemo:l.lineMemo||memo,reference:String(l.reference||reference||'').toUpperCase(),project,category,revision,code:a.code,name:a.name,type:a.type,debit:Number(l.debit)||0,credit:Number(l.credit)||0,by:'Preview user'};
  });
@@ -43,7 +43,7 @@ async function previewCall(action,input){
    return existing||name;
  }
  case 'saveAccount':{
-   if(!/^[1-9]\d{1,9}$/.test(input.code)||previewData.accounts.some(a=>a.code===input.code))throw Error('Choose a new numeric account code of 2–10 digits.');
+   if(!/^[1-9]\d{1,9}$/.test(input.code)||previewData.accounts.some(a=>a.code===input.code && a.book===input.book))throw Error('Choose a new numeric account code of 2–10 digits.');
    if(!input.name.trim())throw Error('Enter an account name.');
    previewData.accounts.push({...input,name:input.name.trim()});return input.code;
  }
