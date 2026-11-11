@@ -79,12 +79,18 @@ function sheetWarnings(){
   return '<details class="notice"><summary>Check '+data.warnings.length+' item(s) in the Journal sheet</summary><ul>'+
     data.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul></details>';
 }
-function entryList(groups){return groups.map(g=>{const r=g[0],index=data.entries.indexOf(r);return '<button class="item" onclick="detail('+index+')"><span class="row"><strong>'+esc(r.memo)+'</strong><b class="money">'+amount(g.reduce((a,l)=>a+l.debit,0))+'</b></span><small>'+esc(r.sheetDraft?'Ready to post · '+r.id:r.id)+' · '+esc(r.date)+' · '+esc(r.book)+(r.project?' · '+esc(r.project):'')+'</small></button>'}).join('')||'<p class="muted">No entries yet.</p>'}
+function displayDate(value){
+  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value||'');
+  if(!match)return value||'';
+  const month=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(match[2])-1];
+  return month?match[3]+'-'+month+'-'+match[1]:value;
+}
+function entryList(groups){return groups.map(g=>{const r=g[0],index=data.entries.indexOf(r);return '<button class="item" onclick="detail('+index+')"><span class="row"><strong>'+esc(r.memo)+'</strong><b class="money">'+amount(g.reduce((a,l)=>a+l.debit,0))+'</b></span><small>'+esc(r.sheetDraft?'Ready to post · '+r.id:r.id)+' · '+esc(displayDate(r.date))+' · '+esc(r.book)+(r.project?' · '+esc(r.project):'')+'</small></button>'}).join('')||'<p class="muted">No entries yet.</p>'}
 function net(rows,type){return rows.filter(r=>r.type===type).reduce((s,r)=>s+Math.round(r.debit*100)-Math.round(r.credit*100),0)/100}
 function home(){if(!data)return;const names=categories();if(!names.includes(categoryFilter))categoryFilter='';const picker=projectPicker()+(names.length?field('Category','<select id="categoryFilter" onchange="categoryFilter=this.value;home()"><option value="">All categories</option>'+options(names,categoryFilter)+'</select>'):'');let rows=filtered();el('homeData').innerHTML=picker+sheetWarnings()+'<section class="panel"><small>Net income · All dates</small><div class="kpi">'+amount(-net(rows.filter(r=>!r.sheetDraft),'Income')-net(rows.filter(r=>!r.sheetDraft),'Expense'))+'</div></section><h2>Recent entries</h2>'+entryList(groupEntries(rows).slice(0,5))}
 function detail(index){
   const row=data.entries[index],lines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
-  dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,row.project,row.category,row.date].filter(Boolean).join(' · '))+'</p>'+
+  dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,row.project,row.category,displayDate(row.date)].filter(Boolean).join(' · '))+'</p>'+
     ledgerTable(lines)+'<p class="sub">'+esc(row.by?'Posted by '+row.by:'Entered in Google Sheets')+'<br>'+esc(row.id)+'</p>'+btn(row.sheetDraft?'Review & post sheet entry':'Edit entry','editEntry('+index+')',true));
 }
 function editEntry(index){
@@ -146,7 +152,7 @@ function removeLine(i){readForm();draft.lines.splice(i,1);drawLines()}
 function review(){readForm();if(!draft.memo||!draft.date)throw Error('Enter a date and description.');
 let dr=0,cr=0;for(const l of draft.lines){for(const n of [l.debit,l.credit])if(n&&!/^(0|[1-9]\d{0,10})(\.\d{1,2})?$/.test(n))throw Error('Enter amounts with up to two decimals.');if((+l.debit>0)===(+l.credit>0))throw Error('Each account needs either a debit or a credit.');dr+=Math.round(l.debit*100);cr+=Math.round(l.credit*100)}
 if(dr!==cr||!dr||new Set(draft.lines.map(l=>l.code)).size<2)throw Error('Debits and credits must balance across at least two accounts.');
-const lines=draft.lines.map(l=>({...l,reference:l.reference||draft.reference,name:data.accounts.find(a=>a.code===l.code).name}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,draft.project,draft.category,draft.date].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(draft.mode,true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
+const lines=draft.lines.map(l=>({...l,reference:l.reference||draft.reference,name:data.accounts.find(a=>a.code===l.code).name}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,draft.project,draft.category,displayDate(draft.date)].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(draft.mode,true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
 function post(){
   write('postEntry',[draft],id=>{
     draft=null;
@@ -172,7 +178,7 @@ function reportData(){
   }else if(kind==='General ledger'){
     headers=['Code','Account','Date','Book','Project','Category','Description','Reference','Debit (LAK)','Credit (LAK)'];moneyColumns=[8,9];
     for(const account of accounts)for(const line of rows.filter(r=>r.code===account.code)){
-      records.push([account.code,account.name,line.date,line.book,line.project||'',line.category||'',line.lineMemo||line.memo,line.reference||'',line.debit,line.credit]);
+      records.push([account.code,account.name,displayDate(line.date),line.book,line.project||'',line.category||'',line.lineMemo||line.memo,line.reference||'',line.debit,line.credit]);
     }
   }else{
     headers=['Code','Account','Debit (LAK)','Credit (LAK)'];moneyColumns=[2,3];

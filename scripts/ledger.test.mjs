@@ -195,3 +195,19 @@ test('separate book tabs supply the book, share the sequence and preserve refere
   assert.equal(api.postEntry({...draft(),book:'Business',sourceBook:'Family',editId:id,groupKey:old.groupKey,revision:old.revision,reference:'007'}),id);
   state=api.journalState_(book,accounts);assert.equal(state.entries.filter(r=>r.id===id).length,2);assert.ok(state.entries.filter(r=>r.id===id).every(r=>r.book==='Business'&&r.reference==='007'));
 });
+
+test('a later edit repairs earlier balanced ID gaps without attributing the posting to the later editor',()=>{
+  const {api}=fixture(), rows=Array.from({length:9},()=>Array(16).fill(''));
+  const dates=['09','09','09','09','09','09','10','10','11'];
+  const amounts=[100,-100,1000,10,-1000,-10,25,-25,0];
+  for(const [i,row] of rows.entries()){
+    row[1]='2026-11-'+dates[i];row[2]='Family';row[3]='Manual line';
+    row[4]=amounts[i]<0?'5100':'1100';
+    if(amounts[i])row[amounts[i]>0?7:8]=Math.abs(amounts[i]);
+  }
+  rows[0][0]='2611-09A005';rows[8][0]='2611-11A001';rows[8][13]='auto:'+rows[8][0];
+  const plan=api.sheetEntryPlan_(rows,accounts,8,8,'Asia/Vientiane','2026-11-11');
+  assert.deepEqual(Array.from(plan,g=>[g.start,g.end,g.id,g.backfillOnly]),[
+    [0,1,'2611-09A005',true],[2,5,'2611-09A006',true],[6,7,'2611-10A001',true],[8,8,'2611-11A001',false]]);
+  assert.deepEqual(Array.from(plan[0].changes,c=>c.index),[1]);
+});

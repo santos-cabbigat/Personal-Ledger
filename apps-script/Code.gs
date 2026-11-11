@@ -103,7 +103,7 @@ function formatBookJournal_(sheet,tab,fresh){
     tab.getRange(1,1,1,BOOK_TAB_HEADERS.length).setValues([BOOK_TAB_HEADERS]).setFontWeight('bold').setBackground('#254566').setFontColor('#ffffff');
     tab.setFrozenRows(1);
     tab.setColumnWidth(1,126);tab.setColumnWidth(2,110);tab.setColumnWidth(3,175);tab.setColumnWidth(5,180);tab.setColumnWidth(7,255);
-    tab.getRange(2,2,n,1).setNumberFormat('yyyy-mm-dd').setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
+    tab.getRange(2,2,n,1).setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
     for(const [col,source] of [[4,'D2:D'],[5,'E2:E'],[13,'H2:H'],[15,'I2:I']]){
       tab.getRange(2,col,n,1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(settings.getRange(source),true).setAllowInvalid(true).build());
     }
@@ -115,6 +115,7 @@ function formatBookJournal_(sheet,tab,fresh){
     tab.getRange(2,4,n,1).setFormulas(formulas.map(row=>[row[0]]));
     tab.getRange(2,6,n,1).setFormulas(formulas.map(row=>[row[1]]));
   }
+  tab.getRange('B2:B').setNumberFormat('dd-mmm-yyyy');
   tab.getRange('A1').setNote('Choose an account to start an entry. The same ID continues until the entry balances.');
   tab.getRange('R1').setValue('Draft running balance');
   tab.getRange('C2:C').setNumberFormat('@');tab.hideColumns(18);
@@ -306,7 +307,7 @@ function journalRules_(journalId,settingsId,firstBlank,rowCount) {
   rule(1,'DATE_IS_VALID',[],'Choose a journal date.');
   rule(4,'ONE_OF_RANGE',["=Settings!$D$2:$D"],'Select a posting account code, or choose its name in column F.',false);
   rule(5,'ONE_OF_RANGE',["=Settings!$E$2:$E"],'Choose a posting account name.',false);
-  field(cells(1),{userEnteredFormat:{numberFormat:{type:'DATE',pattern:'yyyy-mm-dd'}}},'userEnteredFormat.numberFormat');
+  field(cells(1),{userEnteredFormat:{numberFormat:{type:'DATE',pattern:'dd-mmm-yyyy'}}},'userEnteredFormat.numberFormat');
   for(const col of [7,8])field(cells(col),{userEnteredFormat:{numberFormat:{type:'NUMBER',pattern:'#,##0.##'}}},'userEnteredFormat.numberFormat');
   if(firstBlank<rowCount){
     const n=firstBlank+1;
@@ -402,7 +403,7 @@ function onEdit(e){
         if(change.id){tab.getRange(n,1).setValue(id);tab.getRange(n,14).setValue('auto:'+id);}
         if(change.date)tab.getRange(n,2).setValue(Math.round(Date.parse(date)/86400000)+25569);
       }
-      if(!group.balanced || !group.validId || !group.book || !books.includes(group.book) || !group.hasMemo || group.conflict)continue;
+      if(group.backfillOnly || !group.balanced || !group.validId || !group.book || !books.includes(group.book) || !group.hasMemo || group.conflict)continue;
       if(!email){e.source.toast('Choose Ledger → Enable my Sheet posting to record your Gmail.');continue;}
       // One range write stamps the entire transaction, leaving amounts, descriptions and receipts in place.
       const stamp=[email,Utilities.formatDate(new Date(),'Asia/Vientiane','yyyy-MM-dd HH:mm:ss')+' +07:00',Utilities.getUuid()];
@@ -424,7 +425,8 @@ function sheetEntryPlan_(rows,accounts,first,last,tz,today,otherIds=[]){
   rows.forEach((row,i)=>{
     const id=ids[i],auto=id && row[13]==='auto:'+id,manual=auto?'':id;
     if(row[9] || row[11] || !row.some((v,c)=>c!==13 && v!=='' && v!=null)){close();return;}
-    if(group && manual && group.manual && group.manual!==manual)close();
+    if(group && ((manual && group.manual && group.manual!==manual) ||
+      (row[1] && group.dates.size && !group.dates.has(day(row[1])))))close();
     if(!group)group={start:i,end:i,manual:'',autoIds:[],indexes:[],dates:new Set(),books:new Set(),codes:new Set(),projects:new Set(),categories:new Set(),validLines:true,balance:0,hasMemo:false};
     group.end=i;
     if(manual)group.manual=manual;
@@ -448,7 +450,11 @@ function sheetEntryPlan_(rows,accounts,first,last,tz,today,otherIds=[]){
   for(const g of groups)if(touched(g))g.autoIds.forEach(id=>affectedAutoIds.add(id));
   const claimed=new Set(),plans=[];
   for(const g of groups){
-    if(!g.indexes.length || !(touched(g)||g.autoIds.some(id=>affectedAutoIds.has(id))))continue;
+    const backfillOnly=!touched(g) && !g.autoIds.some(id=>affectedAutoIds.has(id));
+    if(!g.indexes.length)continue;
+    // Edits also repair earlier complete transactions that missed an edit event.
+    // Their original editor and posting time cannot be inferred from a later edit.
+    if(backfillOnly && (!g.balanced || g.dates.size!==1 || !g.indexes.some(i=>!ids[i])))continue;
     const date=[...g.dates][0]||today;
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date)))continue;
     const prefix=date.slice(2,4)+date.slice(5,7)+'-'+date.slice(8);
@@ -458,7 +464,8 @@ function sheetEntryPlan_(rows,accounts,first,last,tz,today,otherIds=[]){
     const duplicateManual=g.manual && (otherIds.includes(g.manual) || rows.some((row,i)=>(i<g.start||i>g.end)&&ids[i]===id && row[13]!=='auto:'+id));
     claimed.add(id);reserved.add(id);
     const changes=g.indexes.map(i=>({index:i,id:ids[i]!==id,date:!rows[i][1] && i===g.indexes[0] && !g.dates.size})).filter(c=>c.id||c.date);
-    plans.push({...g,id,date,changes,book:[...g.books][0],validId:fits(id),conflict:duplicateManual||g.dates.size>1||g.books.size>1||g.projects.size>1||g.categories.size>1});
+    if(backfillOnly && (duplicateManual || !fits(id) || g.books.size!==1 || g.projects.size>1 || g.categories.size>1))continue;
+    plans.push({...g,id,date,changes,backfillOnly,book:[...g.books][0],validId:fits(id),conflict:duplicateManual||g.dates.size>1||g.books.size>1||g.projects.size>1||g.categories.size>1});
   }
   return plans;
 }
