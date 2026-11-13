@@ -558,7 +558,10 @@ function date_(value) {
 function accountInBook_(account,book){return account.book===undefined || account.book===book;}
 function accounts_(sheet) {
   const scoped=sheet.getSheetByName('Accounts').getRange('F1').getDisplayValue()==='Book type';
-  return rows_(sheet,'Accounts',7).filter(r=>r[0] !== '').map(r=>({code:String(r[0]),sheetCode:r[0], name:String(r[1]),type:String(r[2]),parent:String(r[3]),use:String(r[4]),book:scoped?String(r[5]||''):undefined,role:String(r[6]||'')}));
+  return chartFromRows_(rows_(sheet,'Accounts',7),scoped);
+}
+function chartFromRows_(rows,scoped){
+  return rows.filter(r=>r[0]!=='' && r[0]!=null).map(r=>({code:String(r[0]),sheetCode:r[0], name:String(r[1]??''),type:String(r[2]??''),parent:String(r[3]??''),use:String(r[4]??''),book:scoped?String(r[5]||''):undefined,role:String(r[6]||'')}));
 }
 function revision_(rows) {
   return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,JSON.stringify(rows)));
@@ -629,17 +632,61 @@ function journalState_(sheet, accounts,bookTab,books=bookNames_(sheet),tz=sheet.
   }
   return {entries,warnings};
 }
-function state() {
+function state(fresh=false) {
   const {sheet,email,owner}=context_(true);
-  return sheet ? workbookState_(sheet,email,owner) : {connected:false,email};
+  if(!sheet)return {connected:false,email};
+  // The file version also changes after edits made directly in Google Sheets.
+  let cache,key;
+  try{
+    const file=Drive.Files.get(sheet.getId(),{fields:'version,trashed'});
+    if(file.version && !file.trashed){
+      key=['ledger-state-v2',sheet.getId(),email,owner,file.version].join('/');
+      cache=CacheService.getUserCache();
+      const value=fresh?null:cache.get(key);
+      if(value){
+        const cached=JSON.parse(Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(value),'application/x-gzip')).getDataAsString());
+        cached.today=date_(new Date());
+        return cached;
+      }
+    }
+  }catch(error){cache=null;}
+  const result=workbookState_(sheet,email,owner);
+  if(cache && key){
+    try{
+      const compressed=Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(result),'application/json')).getBytes());
+      if(compressed.length<98000)cache.put(key,compressed,300);
+    }catch(error){/* A cache miss or limit must never prevent opening the live workbook. */}
+  }
+  return result;
 }
 function primaryBookName_(sheet,books=bookNames_(sheet)){
   return books.find(book=>!DEFAULT_BOOKS.includes(book))||books[0];
 }
 function workbookState_(sheet,email,owner=sheet.getOwner().getEmail().toLowerCase()) {
-  const accounts=accounts_(sheet),books=bookNames_(sheet);
-  return {connected:true,ledgerId:sheet.getId(),title:sheet.getSheetByName('Settings').getRange('B2').getDisplayValue(),
-    url:sheet.getUrl(),email,owner:email===owner,reportBook:sheet.getSheetByName('Monthly Report')?.getRange('A4').getDisplayValue()||primaryBookName_(sheet,books),books,accounts,...journalState_(sheet,accounts,null,books),today:date_(new Date())};
+  const tabs=sheet.getSheets();
+  const titles=tabs.map(tab=>tab.getName());
+  const legacy=titles.includes('Journal');
+  const candidates=legacy?[]:tabs.filter((_,i)=>!['Overview','Settings','Accounts','Journal'].includes(titles[i]));
+  const ranges=["'Accounts'!A:G","'Settings'!B2","'Settings'!F:F"];
+  const hasReport=titles.includes('Monthly Report');
+  if(hasReport)ranges.push("'Monthly Report'!A4");
+  const firstHeader=ranges.length;
+  for(const tab of candidates)ranges.push("'"+tab.getName().replace(/'/g,"''")+"'!A1:C1");
+  const id=sheet.getId(),tz=sheet.getSpreadsheetTimeZone();
+  const result=Sheets.Spreadsheets.Values.batchGet(id,{ranges,valueRenderOption:'UNFORMATTED_VALUE'}).valueRanges;
+  const chart=result[0].values||[],settings=result[2].values||[];
+  const accounts=chartFromRows_(chart.slice(1),chart[0]?.[5]==='Book type');
+  const books=settings[0]?.[0]==='Book types'?[...new Set(settings.slice(1).map(row=>String(row[0]??'').trim()).filter(Boolean))]:DEFAULT_BOOKS.slice();
+  // Read journal cells with their native types, as edit conflict checks hash those same cells.
+  const sources=legacy?[null]:candidates.filter((_,i)=>{
+    const h=result[firstHeader+i].values?.[0]||[];
+    return h[0]==='Entry ID' && h[1]==='Date' && h[2]==='Reference';
+  });
+  const views=sources.map(tab=>journalState_(sheet,accounts,tab,books,tz));
+  const reportBook=hasReport?result[3].values?.[0]?.[0]:'';
+  return {connected:true,ledgerId:id,title:String(result[1].values?.[0]?.[0]??''),url:sheet.getUrl(),
+    email,owner:email===owner,reportBook:reportBook||primaryBookName_(sheet,books),books,accounts,
+    entries:views.flatMap(view=>view.entries),warnings:views.flatMap(view=>view.warnings),today:date_(new Date())};
 }
 function lock_(action) {
   const lock=LockService.getScriptLock(); lock.waitLock(15000);

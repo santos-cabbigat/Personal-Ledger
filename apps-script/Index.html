@@ -185,9 +185,9 @@ tr:last-child td { border-bottom: 0; }
     <div id="accessActions"></div>
   </section>
   <div id="dashboard" hidden>
-  <nav class="navRail" aria-label="Ledger navigation"><button type="button" data-view="Overview" onclick="overview()" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button><button type="button" data-view="Journal" onclick="journals()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg><span>Journal</span></button><button type="button" data-view="Accounts" onclick="accountsView()"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg><span>Accounts</span></button><button type="button" data-view="Expense" onclick="expenses()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg><span>Expense</span></button><button type="button" data-view="Reports" onclick="reports()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18M5 16v-4h3v4m3 0V8h3v8m3 0V4h3v12"/></svg><span>Reports</span></button></nav>
+  <nav id="ledgerNav" class="navRail" aria-label="Ledger navigation"><button type="button" data-view="Overview" onclick="overview()" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button><button type="button" data-view="Journal" onclick="journals()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg><span>Journal</span></button><button type="button" data-view="Accounts" onclick="accountsView()"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg><span>Accounts</span></button><button type="button" data-view="Expense" onclick="expenses()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg><span>Expense</span></button><button type="button" data-view="Reports" onclick="reports()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18M5 16v-4h3v4m3 0V8h3v8m3 0V4h3v12"/></svg><span>Reports</span></button></nav>
   <div class="sectionHead"><div><h2 id="viewTitle">Overview</h2><div class="status" id="status" role="status"></div></div>
-  <div class="filters" id="tools" hidden><select id="scope" aria-label="Filter by book" onchange="changeScope()"><option value="">All books</option></select><button class="iconButton" onclick="load()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.1 8a7.5 7.5 0 0 1 12.5-2L20 9M4 15l2.4 3A7.5 7.5 0 0 0 19 16"/></svg> Refresh</button></div></div>
+  <div class="filters" id="tools" hidden><select id="scope" aria-label="Filter by book" onchange="changeScope()"><option value="">All books</option></select><button class="iconButton" onclick="load(null,true)"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.1 8a7.5 7.5 0 0 1 12.5-2L20 9M4 15l2.4 3A7.5 7.5 0 0 0 19 16"/></svg> Refresh</button></div></div>
   <div id="homeData"></div><section class="workPanel" id="work" hidden></section>
   </div>
   <footer class="sub">
@@ -207,9 +207,10 @@ const pages = !inSheet && !preview;
 const call = inSheet
   ? (method,...args)=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[method](...args))
   : preview ? previewCall : ledgerGoogle.call;
-let data=null,draft=null,locked=false;
+let data=null,draft=null,locked=false,lastReadAt=0;
+let refreshInProgress=false;
 document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden && data && !locked && !el('modal').open)load();
+  if(!document.hidden && data && !locked && !refreshInProgress && !el('modal').open && Date.now()-lastReadAt>=60000)load();
 });
 function ready(){return Boolean(data)}
 let loadVersion=0, currentView='Overview';
@@ -239,7 +240,7 @@ function changeScope() {
 }
 function accessScreen(title,message='',actions=''){
   el('dashboard').hidden=true;
-  el('dashboard').inert=false;
+  el('ledgerNav').inert=false;
   el('settingsButton').hidden=true;
   el('access').hidden=false;
   el('accessTitle').textContent=title;
@@ -285,8 +286,9 @@ async function reconnect() {
     el('err').textContent='Signed in. You can retry saving.';
   }catch(error){el('err').textContent=error.message;}
 }
-async function load(initial){
+async function load(initial,fresh=false){
   const version=++loadVersion;
+  refreshInProgress=true;
   if(data)el('status').textContent='Refreshing…';
   try{
     let next=initial;
@@ -302,7 +304,7 @@ async function load(initial){
         if(summary){
           el('access').hidden=true;
           el('dashboard').hidden=false;
-          el('dashboard').inert=true;
+          el('ledgerNav').inert=true;
           el('tools').hidden=true;
           el('title').textContent=summary.title;
           el('status').textContent='Updating from Google Sheets…';
@@ -322,7 +324,7 @@ async function load(initial){
         return;
       }
     }
-    next=next || await call('state');
+    next=next || (fresh?await call('state',true):await call('state'));
     if(version!==loadVersion)return;
     if(next.loadError)throw Error(next.loadError);
     if(pages){
@@ -337,9 +339,10 @@ async function load(initial){
     }
     const selected=el('scope').value;
     data=next;
+    lastReadAt=Date.now();
     el('access').hidden=true;
     el('dashboard').hidden=false;
-    el('dashboard').inert=false;
+    el('ledgerNav').inert=false;
     el('settingsButton').hidden=false;
     el('tools').hidden=false;
     const books=[...new Set([...data.books,...data.entries.map(row=>row.book)])];
@@ -364,7 +367,7 @@ async function load(initial){
       return;
     }
     el('status').textContent=(data?'Refresh failed. Showing the last loaded entries. ':'Could not read the ledger. ')+e.message;
-  }
+  }finally{if(version===loadVersion)refreshInProgress=false;}
 }
 function connectButtons(){
   return btn('Choose an existing ledger','existingLedgerForm()',true)+btn('Set up a personal workbook','connectDrive()');
@@ -512,7 +515,7 @@ function newAccount(){
 function parents(){el('parent').innerHTML='<option value="">No parent</option>'+acOptions(chartFor(el('accountBook').value).filter(a=>a.type===el('classify').value&&a.use==='Group'));el('role').disabled=el('classify').value!=='Asset'||el('use').value!=='Posting';if(el('role').disabled)el('role').value=''}
 async function write(method,args,after){if(locked)return;locked=true;el('err').textContent='Saving…';let result;try{result=await call(method,...args)}catch(e){el('err').textContent=e.message;locked=false;
     if(pages&&!ledgerGoogle.authorized())el('err').insertAdjacentHTML('beforeend',' '+btn('Reconnect','reconnect()'));
-    return}locked=false;el('modal').close();await load();if(after&&data)after(result)}
+    return}locked=false;el('modal').close();await load(null,true);if(after&&data)after(result)}
 function addAccount(){const book=el('accountBook').value;write('saveAccount',[{ledgerId:data.ledgerId,book,role:el('role').value,code:el('code').value,name:el('accountName').value,type:el('classify').value,parent:el('parent').value,use:el('use').value}],()=>accountsView(book))}
 function entryForm(keep=false){
   if(!ready())return;

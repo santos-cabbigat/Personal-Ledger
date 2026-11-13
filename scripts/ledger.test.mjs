@@ -223,3 +223,49 @@ test('posting resolves duplicate account codes within the chosen book',()=>{
   assert.equal(api.makeLines_(book,input,'test',['signed','time','request'])[0][5],'Business cash');
   assert.throws(()=>api.makeLines_(book,{...input,lines:[{code:'5100',debit:23},{code:'1100',credit:23}]},'test',[]),/posting account/);
 });
+
+test('batched workbook settings preserve legacy and separate books, references and revisions',()=>{
+  const {api}=fixture();
+  const bookName="Sam's book", data=new Map();
+  const legacyRow=['2611-11A001','2026-11-11',bookName,'Food','5100','Supplies','Expense',100,'','poster','','posted','','','','','','0012'];
+  const rows=[legacyRow,[...legacyRow.slice(0,4),'1100','Cash','Asset','',100,...legacyRow.slice(9)]];
+  const physicalRows=rows.map(r=>[r[0],r[1],r[17],r[4],r[5],r[6],r[3],...r.slice(7,15)]);
+  function tab(name,id,values){
+    return {getName:()=>name,getSheetId:()=>id,getLastRow:()=>values.length+1,
+      getRange:()=>({getValues:()=>values.map(r=>Array.from({length:17},(_,i)=>r[i]??''))})};
+  }
+  const tabs=['Accounts','Settings','Overview','Monthly Report',bookName].map((n,i)=>tab(n,i+1,n===bookName?physicalRows:[]));
+  const sheet={getSheets:()=>tabs,getId:()=>'book',getUrl:()=>'url',getSheetByName:n=>tabs.find(t=>t.getName()===n),getSpreadsheetTimeZone:()=>'Asia/Vientiane'};
+  data.set("'Accounts'!A:G",[['Code','Name','Type','Parent','Use','Book type'],...accounts.map(a=>[a.code,a.name,a.type,'','Posting',bookName])]);
+  data.set("'Settings'!B2",[['Ledger']]);data.set("'Settings'!F:F",[['Book types'],[bookName]]);
+  data.set("'Monthly Report'!A4",[[bookName]]);data.set("'Sam''s book'!A1:C1",[['Entry ID','Date','Reference']]);
+  let batches=0;
+  api.Sheets.Spreadsheets.Values={batchGet:(_,req)=>{batches++;return {valueRanges:req.ranges.map(n=>({values:data.get(n)||[]}))};}};
+  api.Utilities.formatDate=()=>'2026-11-11';
+  for(const legacy of [false,true]){
+    if(legacy){tabs.push(tab('Journal',77,rows));api.rows_=()=>rows;}
+    const state=api.workbookState_(sheet,'owner','owner');
+    assert.equal(state.owner,true);assert.equal(state.title,'Ledger');assert.equal(state.reportBook,bookName);
+    assert.equal(state.entries.length,2);assert.equal(state.entries[0].reference,'0012');
+    assert.equal(state.entries[0].revision,api.revision_(api.journalRows_(sheet,legacy?null:tabs[4])));
+    assert.deepEqual([...state.warnings],[]);
+  }
+  assert.equal(batches,2);
+});
+
+test('server reuses only a matching workbook version after checking the account; Refresh bypasses it',()=>{
+  const {api}=fixture(), stored=new Map();
+  let version='1', reads=0, access=true, email='alice', versionUnavailable=false;
+  api.context_=()=>({sheet:access?{getId:()=>'book'}:null,email,owner:'alice'});
+  api.Drive={Files:{get(){if(versionUnavailable)throw Error('Drive unavailable');return {version};}}};
+  api.CacheService={getUserCache:()=>({get:k=>stored.get(k),put:(k,v)=>stored.set(k,v)})};
+  Object.assign(api.Utilities,{formatDate:()=>'today',newBlob:value=>({getDataAsString:()=>Buffer.from(value).toString(),getBytes:()=>Buffer.from(value)}),
+    gzip:v=>v,ungzip:v=>v,base64Encode:v=>Buffer.from(v).toString('base64'),base64Decode:v=>Buffer.from(v,'base64')});
+  api.workbookState_=()=>({title:'Read '+ ++reads,email});
+  assert.equal(api.state().title,'Read 1');assert.equal(api.state().title,'Read 1');
+  version='2';assert.equal(api.state().title,'Read 2');
+  assert.equal(api.state(true).title,'Read 3');assert.equal(api.state().title,'Read 3');
+  email='bob';assert.equal(api.state().title,'Read 4');
+  versionUnavailable=true;assert.equal(api.state().title,'Read 5');
+  access=false;assert.equal(api.state().connected,false);
+});
