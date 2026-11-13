@@ -53,10 +53,11 @@ const ledgerGoogle = (() => {
     });
   }
   function openChannel() {
+    if(port)return Promise.resolve(true);
     if(connecting)return connecting;
     const nonce=crypto.randomUUID();
     frame=document.createElement('iframe');
-    frame.hidden=true;frame.title='Ledger session';frame.referrerPolicy='no-referrer';
+    frame.className='sessionFrame';frame.tabIndex=-1;frame.setAttribute('aria-hidden','true');frame.title='Ledger session';frame.referrerPolicy='no-referrer';
     connecting=new Promise(resolve=>{
       let handshake,finished=false;
       const finish=ok=>{
@@ -82,7 +83,7 @@ const ledgerGoogle = (() => {
         };
         event.source.postMessage({type:'ledger-connect',nonce},event.origin,[channel.port2]);
       }
-      const timer=setTimeout(()=>finish(false),12000);
+      const timer=setTimeout(()=>finish(false),35000);
       window.addEventListener('message',receive);
       frame.src=webApp+'?ledgerSession='+encodeURIComponent(nonce);
       document.body.append(frame);
@@ -154,7 +155,9 @@ const ledgerGoogle = (() => {
   }
   function authorized() { return Boolean(port || (token && expiresAt > Date.now()+30000)); }
   async function call(method,...parameters) {
-    if(!authorized() && method!=='state' && savedAccount())await restore();
+    if(!authorized() && method!=='state' && savedAccount()){
+      if(!await restore())throw Error('Sign in to Google again to continue.');
+    }
     if(port)return channelCall(method,parameters);
     if (!authorized()) throw Error('Sign in to Google again to continue.');
     const id = encodeURIComponent(config.deploymentId);

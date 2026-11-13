@@ -170,3 +170,5 @@ tr:last-child td { border-bottom: 0; }
   button,.navRail,.gear,.actions { display: none; }
   .panel,.workPanel,.entryPanel { box-shadow: none; }
 }
+
+.sessionFrame { position: fixed; left: -8px; top: 0; width: 1px; height: 1px; border: 0; pointer-events: none; }
