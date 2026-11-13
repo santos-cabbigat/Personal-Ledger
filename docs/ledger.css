@@ -82,14 +82,14 @@ select { text-overflow: ellipsis; }
 .entryText small { display: block; font-weight: 450; }
 .item strong,.item small,.money { overflow-wrap: anywhere; }
 .empty { text-align: center; margin: 18px 0; padding: 22px 14px; border: 1px dashed #bdb6a6; border-radius: 12px; color: var(--muted); }
-.welcome { display:grid; grid-template-columns: minmax(0,1.2fr) minmax(190px,.85fr); align-items:center; gap:32px; padding: clamp(24px,5.5vw,72px); }
-.welcome h3 { font-size: clamp(27px,4vw,43px); margin:0 0 12px; line-height:1.1; letter-spacing:-.055em; }
-.welcome p { color:var(--muted); max-width:40ch; }
-.welcome .actions { justify-content: flex-start; }
-.bookWell { display:grid; place-items:center; min-height:200px; border-radius:24px; background:var(--well); box-shadow:var(--inset); overflow:hidden; }
-.bookCover { width:121px; height:151px; position:relative; display:grid; place-items:center; border-radius:5px 13px 12px 6px; color:var(--teal); background:linear-gradient(90deg,#d3c8b3 0 8%,#e7decb 9% 11%,#f2e9d6 12%); border:1px solid #d7cbb2; box-shadow:2px 3px #f8efdd,3px 4px #c8bca2,5px 6px #f6eddb,8px 12px 12px #74634b39; transform:rotate(-8deg); }
-.bookCover::before { content:""; position:absolute; right:17px; top:-1px; width:13px; height:41px; background:var(--teal); clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%); }
-.bookCover svg { width:38px; height:38px; stroke-width:1.25; }
+.accessPanel { max-width: 440px; margin: clamp(32px,10vh,100px) auto; padding: clamp(24px,4vw,40px); }
+.accessPanel h2 { margin-bottom: 12px; }
+.accessPanel p { color: var(--muted); overflow-wrap: anywhere; }
+.accessPanel p:empty { display: none; }
+#accessActions { display: grid; gap: 10px; }
+#accessActions:empty { display: none; }
+#accessActions button { width: 100%; }
+.status:empty { display: none; }
 dialog { width: min(640px,calc(100vw - 28px)); max-height: min(90dvh,880px); padding: clamp(18px,3vw,28px); color: var(--ink); box-shadow: 0 16px 64px #40382045, inset 1px 1px 1px #fff9ec; }
 dialog::backdrop { background: #38362955; }
 dialog header { padding-bottom: 13px; border-bottom: 1px solid var(--line); }
@@ -156,11 +156,6 @@ tr:last-child td { border-bottom: 0; }
   .entry { gap: 8px; }
   .entry .money { max-width: 40%; }
   .entryText small { font-size: 11px; }
-  .welcome { gap: 16px; grid-template-columns: 1fr; }
-  .bookWell { min-height: 90px; grid-row: 1; }
-  .bookCover { width: 58px; height: 72px; }
-  .bookCover svg { width: 22px; height: 22px; }
-  .bookCover::before { right: 8px; width: 7px; height: 18px; }
   .filters { gap: 6px; }
   .filters select { min-width: 0; max-width: 46vw; }
 }

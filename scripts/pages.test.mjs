@@ -70,9 +70,9 @@ test('monthly spending nets posted expense lines within each book and links spli
   const app = read('docs/index.html').match(/<script>([\s\S]*?)<\/script>/)[1];
   const modal = {addEventListener() {}};
   const context = vm.createContext({
-    window: {}, location: {search: ''}, URLSearchParams,
+    window: {addEventListener() {}}, location: {search: ''}, URLSearchParams,
     document: {getElementById: () => modal, addEventListener() {}},
-    ledgerGoogle: {authorized: () => false, prepare: () => new Promise(() => {})}
+    ledgerGoogle: {authorized: () => false, restore: () => new Promise(() => {})}
   });
   vm.runInContext(app, context);
   const base = {id:'split',book:'Personal',code:'5100',name:'Food',type:'Expense',date:'2026-11-01',debit:0,credit:0};
@@ -93,4 +93,42 @@ test('monthly spending nets posted expense lines within each book and links spli
   assert.equal(report('2026-11','Personal').totalCents,13042);
   assert.equal(report('2026-10','Personal').totalCents,15000);
   assert.equal(report('2026-10','Business').accounts.length,0);
+});
+
+test('remembered email alone never authorizes Google access and is removed on sign-out', async () => {
+  const saved=new Map();
+  const localStorage={
+    getItem:key=>saved.get(key), setItem:(key,value)=>saved.set(key,value), removeItem:key=>saved.delete(key)
+  };
+  const client=vm.runInNewContext(clientSource+'\nledgerGoogle',{window:{localStorage}});
+  assert.equal(await client.restore(),null);
+  client.remember('owner@example.com');
+  assert.deepEqual([...saved.values()],['owner@example.com']);
+  assert.equal(client.authorized(),false);
+  client.forget();
+  assert.equal(saved.size,0);
+  assert.equal(await client.restore(),null);
+});
+
+test('session handoff accepts only the expected Pages window, nonce and ledger methods', () => {
+  let listener;
+  const top={postMessage() {}};
+  const window={top,addEventListener:(_,fn)=>listener=fn,removeEventListener:()=>{}};
+  const google={script:{run:{withSuccessHandler:fn=>({withFailureHandler:()=>({state:()=>fn('checked')})})}}};
+  const session=vm.runInNewContext(read('apps-script/Session.gs')+'\nledgerSessionPage_',{window,google});
+  const origin='https://santos-cabbigat.github.io',nonce='example';
+  session(origin,nonce);
+  const messages=[];
+  const port={postMessage:value=>messages.push(value)};
+  const hello={data:{type:'ledger-connect',nonce},origin,source:top,ports:[port]};
+  for(const change of [{origin:'https://example.com'},{source:{}},{data:{type:'ledger-connect',nonce:'wrong'}}]){
+    listener({...hello,...change});
+    assert.equal(messages.length,0);
+  }
+  listener(hello);
+  assert.equal(messages[0].ready,true);
+  port.onmessage({data:{id:1,method:'notAllowed',args:[]}});
+  assert.equal(messages.length,1);
+  port.onmessage({data:{id:2,method:'state',args:[]}});
+  assert.equal(messages[1].result,'checked');
 });

@@ -24,7 +24,7 @@ function openMonthlyFinancialReport(){
   const sheet=SpreadsheetApp.getActiveSpreadsheet();
   SpreadsheetApp.getUi().showModalDialog(page_(sheet,true).setWidth(710).setHeight(750),'Monthly financial report');
 }
-function doGet() { return page_(); }
+function doGet(e) { return e?.parameter?.ledgerSession ? browserSession_(e.parameter.ledgerSession) : page_(); }
 function page_(activeSheet,openReport) {
   const source=HtmlService.createHtmlOutputFromFile('Index').getContent();
   // Load the signed-in user's initial view in the same invocation that serves the page.

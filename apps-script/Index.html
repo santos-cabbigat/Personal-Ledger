@@ -85,14 +85,14 @@ select { text-overflow: ellipsis; }
 .entryText small { display: block; font-weight: 450; }
 .item strong,.item small,.money { overflow-wrap: anywhere; }
 .empty { text-align: center; margin: 18px 0; padding: 22px 14px; border: 1px dashed #bdb6a6; border-radius: 12px; color: var(--muted); }
-.welcome { display:grid; grid-template-columns: minmax(0,1.2fr) minmax(190px,.85fr); align-items:center; gap:32px; padding: clamp(24px,5.5vw,72px); }
-.welcome h3 { font-size: clamp(27px,4vw,43px); margin:0 0 12px; line-height:1.1; letter-spacing:-.055em; }
-.welcome p { color:var(--muted); max-width:40ch; }
-.welcome .actions { justify-content: flex-start; }
-.bookWell { display:grid; place-items:center; min-height:200px; border-radius:24px; background:var(--well); box-shadow:var(--inset); overflow:hidden; }
-.bookCover { width:121px; height:151px; position:relative; display:grid; place-items:center; border-radius:5px 13px 12px 6px; color:var(--teal); background:linear-gradient(90deg,#d3c8b3 0 8%,#e7decb 9% 11%,#f2e9d6 12%); border:1px solid #d7cbb2; box-shadow:2px 3px #f8efdd,3px 4px #c8bca2,5px 6px #f6eddb,8px 12px 12px #74634b39; transform:rotate(-8deg); }
-.bookCover::before { content:""; position:absolute; right:17px; top:-1px; width:13px; height:41px; background:var(--teal); clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%); }
-.bookCover svg { width:38px; height:38px; stroke-width:1.25; }
+.accessPanel { max-width: 440px; margin: clamp(32px,10vh,100px) auto; padding: clamp(24px,4vw,40px); }
+.accessPanel h2 { margin-bottom: 12px; }
+.accessPanel p { color: var(--muted); overflow-wrap: anywhere; }
+.accessPanel p:empty { display: none; }
+#accessActions { display: grid; gap: 10px; }
+#accessActions:empty { display: none; }
+#accessActions button { width: 100%; }
+.status:empty { display: none; }
 dialog { width: min(640px,calc(100vw - 28px)); max-height: min(90dvh,880px); padding: clamp(18px,3vw,28px); color: var(--ink); box-shadow: 0 16px 64px #40382045, inset 1px 1px 1px #fff9ec; }
 dialog::backdrop { background: #38362955; }
 dialog header { padding-bottom: 13px; border-bottom: 1px solid var(--line); }
@@ -159,11 +159,6 @@ tr:last-child td { border-bottom: 0; }
   .entry { gap: 8px; }
   .entry .money { max-width: 40%; }
   .entryText small { font-size: 11px; }
-  .welcome { gap: 16px; grid-template-columns: 1fr; }
-  .bookWell { min-height: 90px; grid-row: 1; }
-  .bookCover { width: 58px; height: 72px; }
-  .bookCover svg { width: 22px; height: 22px; }
-  .bookCover::before { right: 8px; width: 7px; height: 18px; }
   .filters { gap: 6px; }
   .filters select { min-width: 0; max-width: 46vw; }
 }
@@ -181,12 +176,19 @@ tr:last-child td { border-bottom: 0; }
 </style>
 </head><body>
 <main>
-  <header class="hero"><div class="brand"><div class="brandMark"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
+  <header class="hero"><div class="brand"><div class="brandMark"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button id="settingsButton" hidden class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
+  <section id="access" class="panel accessPanel" aria-labelledby="accessTitle">
+    <h2 id="accessTitle">Opening your ledger…</h2>
+    <p id="accessMessage" role="status"></p>
+    <div id="accessActions"></div>
+  </section>
+  <div id="dashboard" hidden>
   <nav class="navRail" aria-label="Ledger navigation"><button type="button" data-view="Overview" onclick="overview()" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button><button type="button" data-view="Journal" onclick="journals()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg><span>Journal</span></button><button type="button" data-view="Accounts" onclick="accountsView()"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg><span>Accounts</span></button><button type="button" data-view="Expense" onclick="expenses()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg><span>Expense</span></button><button type="button" data-view="Reports" onclick="reports()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18M5 16v-4h3v4m3 0V8h3v8m3 0V4h3v12"/></svg><span>Reports</span></button></nav>
   <div class="sectionHead"><div><h2 id="viewTitle">Overview</h2><div class="status" id="status" role="status"></div></div>
   <div class="filters" id="tools" hidden><select id="scope" aria-label="Filter by book" onchange="changeScope()"><option value="">All books</option></select><button class="iconButton" onclick="load()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.1 8a7.5 7.5 0 0 1 12.5-2L20 9M4 15l2.4 3A7.5 7.5 0 0 0 19 16"/></svg> Refresh</button></div></div>
   <div id="homeData"></div><section class="workPanel" id="work" hidden></section>
-  <footer class="sub"><p>Personal Ledger uses your Google Sheet to record transactions, show account balances, and prepare reports.</p>
+  </div>
+  <footer class="sub">
   <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/privacy.html">Privacy policy</a> · <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/terms.html">Terms of service</a></footer>
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
@@ -207,7 +209,7 @@ let data=null,draft=null,locked=false;
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden && data && !locked && !el('modal').open)load();
 });
-function ready(){if(data)return true;el('status').textContent='Connect Google Drive or open your ledger to continue.';return false}
+function ready(){return Boolean(data)}
 let loadVersion=0, currentView='Overview';
 function setView(name) {
   currentView=name;
@@ -233,57 +235,89 @@ function changeScope() {
   else if(currentView==='Reports')reports();
   else home();
 }
-function welcome(message='') {
+function accessScreen(title,message='',actions=''){
+  el('dashboard').hidden=true;
+  el('settingsButton').hidden=true;
+  el('access').hidden=false;
+  el('accessTitle').textContent=title;
+  el('accessMessage').textContent=message;
+  el('accessActions').innerHTML=actions;
+}
+function resetLedger(){
+  data=null;draft=null;reportExport=null;expenseMonth='';
+  if(el('modal').open)el('modal').close();
+  for(const id of ['homeData','work','content','err','status'])el(id).textContent='';
+  el('scope').innerHTML='<option value="">All books</option>';
+  document.title=el('title').textContent='Personal & Business Ledger';
   setView('Overview');
-  el('tools').hidden=true;
-  for(const button of document.querySelectorAll('.navRail button, .gear'))button.disabled=button.dataset.view!=='Overview';
-  const installed='<a class="link '+(ledgerGoogle.configured()?'':'primary')+'" target="_blank" rel="noopener" href="'+ledgerGoogle.webApp+'">Open existing Google app</a>';
-  const login=ledgerGoogle.configured()?btn('Sign in with Google','signIn()',true):'';
-  const sample='<a class="link" href="?preview=1">Explore sample ledger</a>';
-  el('homeData').innerHTML='<section class="panel welcome"><div><h3>Open your ledger</h3><p>'+
-    (ledgerGoogle.configured()?'Sign in with the Google account that has access to your workbook.':'Use your existing Google app for live entries while the new connection is being set up.')+
-    '</p><div class="actions">'+login+installed+sample+'</div></div><div class="bookWell" aria-hidden="true"><div class="bookCover"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div></div></section>';
-  el('status').textContent=message||'Google Sheets connection';
+}
+function loginScreen(message=''){
+  const account=ledgerGoogle.savedAccount();
+  accessScreen('Sign in',message||(account?'Continue with '+account+'.':'Use your Google account to open your ledger.'),
+    btn('Continue with Google','signIn()',true)+(account?btn('Use another account','signOut()'):''));
+}
+function signOut(){
+  ++loadVersion;
+  ledgerGoogle.forget();
+  resetLedger();
+  loginScreen();
 }
 async function signIn(){
-  try { await ledgerGoogle.signIn(); await load(); }
-  catch(error) { el('status').textContent=error.message; }
+  try{
+    const request=ledgerGoogle.signIn();
+    accessScreen('Signing in…');
+    await request;
+    await load();
+  }catch(error){loginScreen(error.message);}
 }
 async function reconnect() {
-  try { await ledgerGoogle.signIn(); el('err').textContent='Signed in. You can retry saving.'; }
-  catch(error) { el('err').textContent=error.message; }
+  const previous=data?.email;
+  try {
+    await ledgerGoogle.signIn();
+    const next=await call('state');
+    if(next.email!==previous){resetLedger();await load(next);return;}
+    el('err').textContent='Signed in. You can retry saving.';
+  }catch(error){el('err').textContent=error.message;}
 }
 async function load(initial){
   const version=++loadVersion;
-  el('status').textContent=preview?'Loading sample entries…':'Reading Google Sheet…';
+  if(data)el('status').textContent='Refreshing…';
   try{
-    if(pages && !ledgerGoogle.authorized()) {
-      await ledgerGoogle.prepare();
+    let next=initial;
+    if(pages && !ledgerGoogle.authorized()){
+      if(!data)accessScreen('Opening your ledger…');
+      next=await ledgerGoogle.restore();
       if(version!==loadVersion)return;
-      if(!data)welcome();
-      else el('status').innerHTML='Google sign-in expired. '+btn('Reconnect','signIn()');
-      return;
+      if(!next){
+        resetLedger();
+        await ledgerGoogle.prepare();
+        if(version!==loadVersion)return;
+        if(ledgerGoogle.configured())loginScreen();
+        else accessScreen('Sign-in unavailable','The ledger’s Google connection has not been configured.',btn('Try again','load()'));
+        return;
+      }
     }
-    const next=initial || await call('state');
+    next=next || await call('state');
     if(version!==loadVersion)return;
     if(next.loadError)throw Error(next.loadError);
+    if(pages)ledgerGoogle.remember(next.email);
     if(next.connected===false){
-      data=null; setView('Overview');
-      el('tools').hidden=true;
-      el('title').textContent='Personal & Business Ledger';
-      el('status').textContent='Signed in as '+next.email;
-      el('homeData').innerHTML='<div class="panel"><h3>Your ledger</h3>'+connectButtons()+'</div>';
+      resetLedger();
+      accessScreen('Set up your ledger','Choose the workbook for '+next.email+'. This choice is saved to your account.',
+        connectButtons()+(pages?btn('Sign out','signOut()'):''));
       return;
     }
     const selected=el('scope').value;
     data=next;
-    for(const button of document.querySelectorAll('.navRail button,.gear'))button.disabled=false;
+    el('access').hidden=true;
+    el('dashboard').hidden=false;
+    el('settingsButton').hidden=false;
     el('tools').hidden=false;
     const books=[...new Set([...data.books,...data.entries.map(row=>row.book)])];
     el('scope').innerHTML='<option value="">All books</option>'+options(books,selected);
     el('title').textContent=data.title;
     document.title=data.title;
-    el('status').textContent=preview?'Preview · Sample data only':'Connected to Google Sheets';
+    el('status').textContent=preview?'Preview · Sample data only':'';
     if(el('modal').open)return;
     if(currentView==='Reports' && el('report')){
       const reportBook=el('reportBook').value;
@@ -293,12 +327,18 @@ async function load(initial){
     else changeScope();
   }catch(e){
     if(version!==loadVersion)return;
-    if(pages && !data){welcome(e.message);return;}
+    if(pages && !ledgerGoogle.authorized() && ledgerGoogle.configured()){
+      resetLedger();loginScreen(e.message);return;
+    }
+    if(!data){
+      accessScreen('Couldn’t open your ledger',e.message,btn('Try again','load()',true)+(pages?btn('Sign out','signOut()'):''));
+      return;
+    }
     el('status').textContent=(data?'Refresh failed. Showing the last loaded entries. ':'Could not read the ledger. ')+e.message;
   }
 }
 function connectButtons(){
-  return btn('Connect Google Drive','connectDrive()',true)+btn('Open existing ledger','existingLedgerForm()');
+  return btn('Choose an existing ledger','existingLedgerForm()',true)+btn('Set up a personal workbook','connectDrive()');
 }
 function connectDrive(){dialog('Connect Google Drive','<p>Open your own ledger, or create an empty one in My Drive → Personal &amp; Business Ledger.</p>'+btn('Connect',"write('connectPersonalDrive',[])",true));}
 function existingLedgerForm(){dialog('Open existing ledger',field('Link to your ledger spreadsheet','<input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/…">')+btn('Open',"write('openExistingLedger',[el('sheetUrl').value])",true));}
@@ -685,9 +725,14 @@ function saveBookTypeFromForm(){
   if(!name){el('err').textContent='Enter a book name.';return;}
   write('saveBookType',[name,data.ledgerId],settings);
 }
-function sheetSettings(){if(!ready())return;dialog('Settings',(data.owner?field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()'):'<b>'+esc(data.title)+'</b>')+bookSettings()+'<p><a class="link" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx">Download all data (Excel)</a></p>'+connectButtons()+'<p class="sub">Signed in as '+esc(data.email)+'</p><a class="link" href="'+esc(data.url)+'" target="_blank" rel="noopener">Open Google Sheet</a>'+(data.owner?'<p>To add another person, open the Sheet, tap Share, and invite their Google account as an editor.</p>':''))}
+function sheetSettings(){if(!ready())return;dialog('Settings',(data.owner?field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()'):'<b>'+esc(data.title)+'</b>')+bookSettings()+'<p><a class="link" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx">Download all data (Excel)</a></p>'+connectButtons()+'<p class="sub">Signed in as '+esc(data.email)+'</p>'+(pages?btn('Sign out','signOut()'):'')+'<a class="link" href="'+esc(data.url)+'" target="_blank" rel="noopener">Open Google Sheet</a>'+(data.owner?'<p>To add another person, open the Sheet, tap Share, and invite their Google account as an editor.</p>':''))}
 function settings(){if(!ready())return;if(!preview)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+bookSettings()+'<p class="sub">Preview changes last until you reload this page.</p>')}
 function saveName(){write('renameLedger',[el('appName').value,data.ledgerId])}
+if(pages)window.addEventListener('storage',event=>{
+  if(event.key==='personal-ledger.remembered-account.v1' && data && event.newValue!==data.email){
+    location.reload();
+  }
+});
 const serverLedger = null;
 const showMonthOnOpen = false;
 load(serverLedger).then(()=>{if(showMonthOnOpen && data)monthlyReport()});
