@@ -101,8 +101,7 @@ dialog header button { min-width: 42px; padding: 3px 11px; font-size: 23px; }
 .body > button,.workPanel > button { margin: 3px 8px 5px 0; }
 .actions { display: flex; align-items: center; justify-content: flex-end; margin-top: 16px; }
 .actions:first-child { margin-top: 0; margin-bottom: 14px; }
-.two,.filterGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 12px; }
-.filterGrid:not(:empty) { margin: 0 0 12px; }
+.two { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 12px; }
 .line { padding: 8px 14px 14px; margin: 14px 0; background: #eee8db; border: 1px solid var(--line); border-radius: 13px; }
 summary { cursor: pointer; color: var(--teal); }
 .notice { color: #873a29; overflow-wrap: anywhere; white-space: pre-wrap; margin-top: 10px; }
@@ -128,6 +127,16 @@ tr:last-child td { border-bottom: 0; }
 .metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
 .metrics b { overflow-wrap: anywhere; }
 .rline { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 5px 0; }
+.expenseHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 15px; }
+.expenseHeading h3,.expenseHeading label { margin: 0; }
+.expenseAccount { border-top: 1px solid var(--line); }
+.expenseAccount summary { display: flex; align-items: center; gap: 12px; padding: 12px 2px; min-height: 48px; }
+.expenseAccount summary::-webkit-details-marker { display: none; }
+.expenseAccount summary::before { content: ""; flex: none; width: 7px; height: 7px; border: solid var(--teal); border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.expenseAccount[open] summary::before { transform: rotate(45deg); }
+.expenseAccount .entry { min-width: 0; }
+.expenseAccount .entryText { overflow-wrap: anywhere; }
+.expenseAccount .item { padding-left: 20px; }
 .statement footer { font-size: 12px; color: var(--muted); }
 .statementImage { width: 100%; height: auto; display: block; }
 .reportClean { padding: 8px; }
@@ -160,7 +169,7 @@ tr:last-child td { border-bottom: 0; }
 }
 @media (max-width:390px) {
   h1 { font-size: 17px; }
-  .two,.filterGrid { gap: 6px; }
+  .two { gap: 6px; }
   .metrics { grid-template-columns: 1fr; }
   .entryIcon { display: none; }
 }
@@ -173,7 +182,7 @@ tr:last-child td { border-bottom: 0; }
 </head><body>
 <main>
   <header class="hero"><div class="brand"><div class="brandMark"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
-  <nav class="navRail" aria-label="Ledger navigation"><button type="button" data-view="Overview" onclick="overview()" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button><button type="button" data-view="Journal" onclick="journals()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg><span>Journal</span></button><button type="button" data-view="Accounts" onclick="accountsView()"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg><span>Accounts</span></button><button type="button" data-view="Expense" onclick="entryForm('Expense')"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg><span>Expense</span></button><button type="button" data-view="Reports" onclick="reports()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18M5 16v-4h3v4m3 0V8h3v8m3 0V4h3v12"/></svg><span>Reports</span></button></nav>
+  <nav class="navRail" aria-label="Ledger navigation"><button type="button" data-view="Overview" onclick="overview()" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button><button type="button" data-view="Journal" onclick="journals()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg><span>Journal</span></button><button type="button" data-view="Accounts" onclick="accountsView()"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg><span>Accounts</span></button><button type="button" data-view="Expense" onclick="expenses()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg><span>Expense</span></button><button type="button" data-view="Reports" onclick="reports()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18M5 16v-4h3v4m3 0V8h3v8m3 0V4h3v12"/></svg><span>Reports</span></button></nav>
   <div class="sectionHead"><div><h2 id="viewTitle">Overview</h2><div class="status" id="status" role="status"></div></div>
   <div class="filters" id="tools" hidden><select id="scope" aria-label="Filter by book" onchange="changeScope()"><option value="">All books</option></select><button class="iconButton" onclick="load()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.1 8a7.5 7.5 0 0 1 12.5-2L20 9M4 15l2.4 3A7.5 7.5 0 0 0 19 16"/></svg> Refresh</button></div></div>
   <div id="homeData"></div><section class="workPanel" id="work" hidden></section>
@@ -219,6 +228,7 @@ function workspace(name,html) {
 function changeScope() {
   if(el('modal').open)return;
   if(currentView==='Journal')journals();
+  else if(currentView==='Expense')expenses();
   else if(currentView==='Accounts')accountsView();
   else if(currentView==='Reports')reports();
   else home();
@@ -305,15 +315,9 @@ function options(values,current){return values.map(v=>'<option '+(v===current?'s
 function field(name,html){return '<label>'+name+html+'</label>'}
 function btn(label,fn,primary=false){return '<button class="'+(primary?'primary':'')+'" onclick="'+fn+'">'+label+'</button>'}
 function groupEntries(rows){const groups=new Map();rows.forEach(r=>{const key=r.groupKey||r.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r)});return [...groups.values()].reverse()}
-let projectFilter='',categoryFilter='';
-function categories(){return [...new Set(data.entries.map(r=>r.category).filter(Boolean))].sort();}
-function projects(){return [...new Set(data.entries.map(r=>r.project).filter(Boolean))].sort((a,b)=>a.localeCompare(b));}
-function filtered(){const book=el('scope').value;return data.entries.filter(r=>(!book||r.book===book)&&(!projectFilter||r.project===projectFilter)&&(!categoryFilter||r.category===categoryFilter));}
-function projectPicker(){
-  const names=projects();
-  if(!names.includes(projectFilter)) projectFilter='';
-  if(!names.length)return '';
-  return field('Project','<select id="projectFilter" onchange="projectFilter=this.value;home()"><option value="">All projects</option>'+options(names,projectFilter)+'</select>');
+function filtered(){
+  const book=el('scope').value;
+  return book ? data.entries.filter(row=>row.book===book) : data.entries;
 }
 function sheetWarnings(){
   if(!data.warnings?.length)return '';
@@ -329,7 +333,7 @@ function displayDate(value){
 function entryList(groups){
   return groups.map(group=>{
     const row=group[0],index=data.entries.indexOf(row);
-    const meta=[row.sheetDraft?'Ready to post · '+row.id:row.id,displayDate(row.date),row.book,row.project].filter(Boolean).join(' · ');
+    const meta=[row.sheetDraft?'Ready to post · '+row.id:row.id,displayDate(row.date),row.book].filter(Boolean).join(' · ');
     const total=group.reduce((sum,line)=>sum+Math.round(line.debit*100),0)/100;
     return '<button class="item" onclick="detail('+index+')"><span class="entry"><span class="entryIcon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg></span><span class="entryText"><strong>'+esc(row.memo)+'</strong><small>'+esc(meta)+'</small></span><b class="money">'+amount(total)+'</b></span></button>';
   }).join('')||'<p class="empty">No entries for this selection.</p>';
@@ -337,28 +341,25 @@ function entryList(groups){
 function net(rows,type){return rows.filter(r=>r.type===type).reduce((s,r)=>s+Math.round(r.debit*100)-Math.round(r.credit*100),0)/100}
 function home(){
   if(!data)return;
-  const names=categories();
-  if(!names.includes(categoryFilter))categoryFilter='';
-  const picker=projectPicker()+(names.length?field('Category','<select id="categoryFilter" onchange="categoryFilter=this.value;home()"><option value="">All categories</option>'+options(names,categoryFilter)+'</select>'):'');
   const rows=filtered(),income=-net(rows,'Income'),expense=net(rows,'Expense');
-  el('homeData').innerHTML='<div class="filterGrid">'+picker+'</div>'+sheetWarnings()+
+  el('homeData').innerHTML=sheetWarnings()+
     '<div class="overviewGrid"><section class="panel balance"><div class="balanceLabel"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v3M3 8h17v12H5a2 2 0 0 1-2-2zm17 4h-5v4h5"/></svg> Net income</div><div class="kpi">'+amount(income-expense)+'</div><small>'+esc(el('scope').value||'All books')+' · All dates</small></section>'+
     '<section class="panel totals"><div class="summaryLine"><span>Income</span><strong>'+amount(income)+'</strong></div><div class="summaryLine"><span>Expenses</span><strong>'+amount(expense)+'</strong></div></section></div>'+
     '<section class="entryPanel"><div class="sectionHead compact"><h3>Recent entries</h3><button class="textButton" onclick="journals()">View journal →</button></div>'+entryList(groupEntries(rows).slice(0,5))+'</section>';
 }
 function detail(index){
   const row=data.entries[index],lines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
-  dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,row.project,row.category,displayDate(row.date)].filter(Boolean).join(' · '))+'</p>'+
+  dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,displayDate(row.date)].filter(Boolean).join(' · '))+'</p>'+
     ledgerTable(lines)+'<p class="sub">'+esc(row.by?'Posted by '+row.by:'Entered in Google Sheets')+'<br>'+esc(row.id)+'</p>'+btn(row.sheetDraft?'Review & post sheet entry':'Edit entry','editEntry('+index+')',true));
 }
 function editEntry(index){
   const row=data.entries[index];
   const entryLines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
   const commonReference=entryLines.every(r=>r.reference===row.reference) ? row.reference||'' : '';
-  draft={mode:'Journal',sourceBook:row.book,reference:commonReference,key:crypto.randomUUID(),ledgerId:data.ledgerId,editId:row.id,revision:row.revision,groupKey:row.groupKey,sheetDraft:row.sheetDraft,
+  draft={sourceBook:row.book,reference:commonReference,key:crypto.randomUUID(),ledgerId:data.ledgerId,editId:row.id,revision:row.revision,groupKey:row.groupKey,sheetDraft:row.sheetDraft,
     book:row.book,project:row.project||'',category:row.category||'',date:row.date,memo:row.memo,
     lines:entryLines.map(r=>({code:r.code,reference:commonReference?'':r.reference||'',lineMemo:r.lineMemo && r.lineMemo!==row.memo?r.lineMemo:'',debit:r.debit?String(r.debit):'',credit:r.credit?String(r.credit):''}))};
-  entryForm('Journal',true);
+  entryForm(true);
 }
 function ledgerTable(lines){return '<div class="table"><table><tr><th>Account</th><th>Debit</th><th>Credit</th></tr>'+lines.map(l=>'<tr><td>'+esc(l.name)+(l.lineMemo&&l.lineMemo!==l.memo?'<br><small>'+esc(l.lineMemo)+'</small>':'')+(l.reference?'<br><small>Ref. '+esc(l.reference)+'</small>':'')+'</td><td>'+(+l.debit?amount(l.debit):'—')+'</td><td>'+(+l.credit?amount(l.credit):'—')+'</td></tr>').join('')+'</table></div>'}
 function idPicker(groups){
@@ -367,7 +368,53 @@ function idPicker(groups){
   return field('Find entry ID','<select id="entryIdPicker" onchange="if(this.value)detail(Number(this.value))"><option value="">Choose an entry ID</option>'+
     posted.map(([line])=>'<option value="'+data.entries.indexOf(line)+'">'+esc(line.id)+' · '+esc(line.memo)+'</option>').join('')+'</select>');
 }
-function journals(){if(!ready())return;const groups=groupEntries(filtered());workspace('Journal','<div class="actions">'+btn('New entry',"entryForm('Journal')",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
+function journals(){if(!ready())return;const groups=groupEntries(filtered());workspace('Journal','<div class="actions">'+btn('New entry',"entryForm()",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
+let expenseMonth='';
+function spendingByAccount(entries,month,book) {
+  const accounts=new Map();
+  let totalCents=0;
+  entries.forEach((line,index)=>{
+    if(line.sheetDraft || line.type!=='Expense' || !line.date.startsWith(month+'-') || (book && line.book!==book))return;
+    const key=JSON.stringify([line.book,line.code]);
+    if(!accounts.has(key))accounts.set(key,{name:line.name,code:line.code,book:line.book,cents:0,lines:[]});
+    const account=accounts.get(key);
+    const cents=Math.round(line.debit*100)-Math.round(line.credit*100);
+    account.cents+=cents;
+    totalCents+=cents;
+    account.lines.push({line,index,cents});
+  });
+  const sorted=[...accounts.values()].sort((a,b)=>b.cents-a.cents || a.name.localeCompare(b.name) || a.book.localeCompare(b.book));
+  for(const account of sorted)account.lines.sort((a,b)=>b.line.date.localeCompare(a.line.date) || b.index-a.index);
+  return {totalCents,accounts:sorted};
+}
+function expenses() {
+  if(!ready())return;
+  expenseMonth=expenseMonth || data.today.slice(0,7);
+  workspace('Expense','<div class="expenseHeading"><h3>Monthly spending</h3>'+
+    field('Month','<input type="month" id="expenseMonth" value="'+esc(expenseMonth)+'" onchange="showSpending()">')+
+    '</div><div id="spending"></div>');
+  showSpending();
+}
+function showSpending() {
+  const picker=el('expenseMonth');
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(picker.value))picker.value=data.today.slice(0,7);
+  expenseMonth=picker.value;
+  const book=el('scope').value;
+  const {totalCents,accounts}=spendingByAccount(data.entries,expenseMonth,book);
+  const breakdown=accounts.map(account=>{
+    const items=account.lines.map(({line,index,cents})=>{
+      const meta=[displayDate(line.date),line.id,line.reference].filter(Boolean).join(' · ');
+      return '<button class="item" onclick="detail('+index+')"><span class="entry"><span class="entryText"><strong>'+
+        esc(line.lineMemo||line.memo)+'</strong><small>'+esc(meta)+'</small></span><b class="money">'+amount(cents/100)+'</b></span></button>';
+    }).join('');
+    const meta=[account.code,book?'':account.book].filter(Boolean).join(' · ');
+    return '<details class="expenseAccount"><summary><span class="entry"><span class="entryText"><strong>'+esc(account.name)+
+      '</strong><small>'+esc(meta)+'</small></span><b class="money">'+amount(account.cents/100)+'</b></span></summary>'+items+'</details>';
+  }).join('');
+  el('spending').innerHTML='<div class="closing"><span>Total spending</span><strong>'+amount(totalCents/100)+
+    '</strong><small>Posted expenses, after refunds and credits</small></div>'+
+    (accounts.length?'<h3>Spending by account</h3>'+breakdown:'<p class="empty">No posted expenses for this month.</p>');
+}
 function inBook(account,book){return account.book===undefined || account.book===book}
 function chartFor(book){return data.accounts.filter(a=>inBook(a,book))}
 function accountsView(chosen){
@@ -396,7 +443,25 @@ async function write(method,args,after){if(locked)return;locked=true;el('err').t
     if(pages&&!ledgerGoogle.authorized())el('err').insertAdjacentHTML('beforeend',' '+btn('Reconnect','reconnect()'));
     return}locked=false;el('modal').close();await load();if(after&&data)after(result)}
 function addAccount(){const book=el('accountBook').value;write('saveAccount',[{ledgerId:data.ledgerId,book,role:el('role').value,code:el('code').value,name:el('accountName').value,type:el('classify').value,parent:el('parent').value,use:el('use').value}],()=>accountsView(book))}
-function entryForm(mode,keep=false){if(!ready())return;if(!keep){draft={mode,key:crypto.randomUUID(),ledgerId:data.ledgerId,reference:'',project:projectFilter,category:categoryFilter,book:el('scope').value||data.books[0]||'',date:data.today,memo:'',lines:[{code:mode==='Expense'?'5100':'1100',debit:'',credit:''},{code:mode==='Expense'?'1100':'4100',debit:'',credit:''}]}}dialog(draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':mode==='Expense'?'Record expense':'New journal entry','<div class="two">'+field('Book','<select id="book" onchange="changeEntryBook()">'+options([...new Set([...data.books,draft.book].filter(Boolean))],draft.book)+'</select>')+field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+field('Project (optional)','<input id="project" list="projectNames" maxlength="80" value="'+esc(draft.project)+'" placeholder="Choose or type a project name"><datalist id="projectNames">'+options(projects(),draft.project)+'</datalist>')+field('Category (optional)','<input id="category" list="categoryNames" maxlength="80" value="'+esc(draft.category)+'" placeholder="Choose or type a category"><datalist id="categoryNames">'+options(categories(),draft.category)+'</datalist>')+field('Reference (optional)','<input id="reference" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(draft.reference)+'" placeholder="Receipt or bank transfer number">')+field('Description','<input id="memo" maxlength="180" value="'+esc(draft.memo)+'">')+'<div id="lines"></div><div class="actions">'+(mode==='Journal'?btn('Add line','addLine()'):'')+btn('Review','guard(review)',true)+'</div>');drawLines()}
+function entryForm(keep=false){
+  if(!ready())return;
+  if(!keep){
+    draft={
+      key:crypto.randomUUID(),ledgerId:data.ledgerId,book:el('scope').value||data.books[0]||'',
+      date:data.today,reference:'',memo:'',
+      lines:[{code:'1100',debit:'',credit:''},{code:'4100',debit:'',credit:''}]
+    };
+  }
+  const title=draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':'New journal entry';
+  const books=[...new Set([...data.books,draft.book].filter(Boolean))];
+  dialog(title,'<div class="two">'+
+    field('Book','<select id="book" onchange="changeEntryBook()">'+options(books,draft.book)+'</select>')+
+    field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+
+    field('Reference (optional)','<input id="reference" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(draft.reference)+'" placeholder="Receipt or bank transfer number">')+
+    field('Description','<input id="memo" maxlength="180" value="'+esc(draft.memo)+'">')+
+    '<div id="lines"></div><div class="actions">'+btn('Add line','addLine()')+btn('Review','guard(review)',true)+'</div>');
+  drawLines();
+}
 function formatAmount(value){
   const parts=String(value??'').replace(/,/g,'').split('.');
   if(parts.length>2 || !/^\d*$/.test(parts[0]) || (parts.length===2 && !/^\d*$/.test(parts[1])))return String(value);
@@ -427,15 +492,28 @@ function changeEntryBook(){
   const previous=draft.book;readForm();if(previous===draft.book)return;
   draft.lines.forEach(line=>{line.code=''});drawLines();
 }
-function drawLines(){const list=chartFor(draft.book).filter(a=>a.use==='Posting');if(draft.mode==='Expense'){el('lines').innerHTML=field('Expense account','<select id="ac0">'+acOptions(list.filter(a=>a.type==='Expense'),draft.lines[0].code)+'</select>')+field('Paid from','<select id="ac1">'+acOptions(list.filter(a=>a.type==='Asset'||a.type==='Liability'),draft.lines[1].code)+'</select>')+field('Amount (LAK)',amountInput('expAmount',draft.lines[0].debit));return}
-el('lines').innerHTML=draft.lines.map((l,i)=>'<div class="line">'+field('Account','<select id="ac'+i+'">'+acOptions(list,l.code)+'</select>')+'<div class="two">'+field('Debit',amountInput('dr'+i,l.debit))+field('Credit',amountInput('cr'+i,l.credit))+'</div><details '+(l.reference||l.lineMemo?'open':'')+'><summary>Line description or reference</summary>'+field('Line description','<input id="lineMemo'+i+'" maxlength="180" value="'+esc(l.lineMemo)+'">')+field('Line reference','<input id="lineRef'+i+'" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(l.reference)+'">')+'</details>'+(draft.lines.length>2?btn('Remove','removeLine('+i+')'):'')+'</div>').join('')}
-function readForm(){draft.book=el('book').value;draft.date=el('date').value;draft.reference=el('reference').value.trim();draft.memo=el('memo').value.trim();draft.project=el('project').value.trim();draft.category=el('category').value.trim();draft.lines.forEach((l,i)=>{l.code=el('ac'+i).value;if(draft.mode==='Expense'){l.debit=i===0?el('expAmount').value.replace(/,/g,''):'';l.credit=i===1?el('expAmount').value.replace(/,/g,''):''}else{l.lineMemo=el('lineMemo'+i).value.trim();l.reference=el('lineRef'+i).value.trim();l.debit=el('dr'+i).value.replace(/,/g,'').trim();l.credit=el('cr'+i).value.replace(/,/g,'').trim()}})}
+function drawLines(){
+  const list=chartFor(draft.book).filter(a=>a.use==='Posting');
+  el('lines').innerHTML=draft.lines.map((l,i)=>'<div class="line">'+field('Account','<select id="ac'+i+'">'+acOptions(list,l.code)+'</select>')+'<div class="two">'+field('Debit',amountInput('dr'+i,l.debit))+field('Credit',amountInput('cr'+i,l.credit))+'</div><details '+(l.reference||l.lineMemo?'open':'')+'><summary>Line description or reference</summary>'+field('Line description','<input id="lineMemo'+i+'" maxlength="180" value="'+esc(l.lineMemo)+'">')+field('Line reference','<input id="lineRef'+i+'" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(l.reference)+'">')+'</details>'+(draft.lines.length>2?btn('Remove','removeLine('+i+')'):'')+'</div>').join('')}
+function readForm(){
+  draft.book=el('book').value;
+  draft.date=el('date').value;
+  draft.reference=el('reference').value.trim();
+  draft.memo=el('memo').value.trim();
+  draft.lines.forEach((line,i)=>{
+    line.code=el('ac'+i).value;
+    line.lineMemo=el('lineMemo'+i).value.trim();
+    line.reference=el('lineRef'+i).value.trim();
+    line.debit=el('dr'+i).value.replace(/,/g,'').trim();
+    line.credit=el('cr'+i).value.replace(/,/g,'').trim();
+  });
+}
 function addLine(){readForm();if(draft.lines.length<40){draft.lines.push({code:'',debit:'',credit:''});drawLines()}}
 function removeLine(i){readForm();draft.lines.splice(i,1);drawLines()}
 function review(){readForm();if(!draft.memo||!draft.date)throw Error('Enter a date and description.');
 let dr=0,cr=0;for(const l of draft.lines){for(const n of [l.debit,l.credit])if(n&&!/^(0|[1-9]\d{0,10})(\.\d{1,2})?$/.test(n))throw Error('Enter amounts with up to two decimals.');if((+l.debit>0)===(+l.credit>0))throw Error('Each account needs either a debit or a credit.');dr+=Math.round(l.debit*100);cr+=Math.round(l.credit*100)}
 if(dr!==cr||!dr||new Set(draft.lines.map(l=>l.code)).size<2)throw Error('Debits and credits must balance across at least two accounts.');
-const lines=draft.lines.map(l=>({...l,reference:l.reference||draft.reference,name:chartFor(draft.book).find(a=>a.code===l.code && a.use==='Posting')?.name||''}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,draft.project,draft.category,displayDate(draft.date)].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(draft.mode,true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
+const lines=draft.lines.map(l=>({...l,reference:l.reference||draft.reference,name:chartFor(draft.book).find(a=>a.code===l.code && a.use==='Posting')?.name||''}));dialog('Review entry','<strong>'+esc(draft.memo)+'</strong><p class="sub">'+esc([draft.book,displayDate(draft.date)].filter(Boolean).join(' · '))+'</p>'+ledgerTable(lines)+'<p>Balanced · '+amount(dr/100)+'</p><div class="actions">'+btn('Back','entryForm(true)')+btn(draft.editId&&!draft.sheetDraft?'Save changes':'Post entry','post()',true)+'</div>')}
 function post(){
   write('postEntry',[draft],id=>{
     draft=null;
@@ -453,7 +531,7 @@ function reportData(){
   if(!asOf&&from&&to&&from>to){el('result').textContent='Choose an end date on or after the start date.';return;}
   const chosen=el('reportBook').value;
   const postedOnly=el('reportBasis').value==='Posted only';
-  const rows=data.entries.filter(r=>(!postedOnly||!r.sheetDraft) && (!chosen||r.book===chosen) && (!projectFilter||r.project===projectFilter) && (!categoryFilter||r.category===categoryFilter)).filter(r=>(asOf||!from||r.date>=from)&&(!to||r.date<=to));
+  const rows=data.entries.filter(r=>(!postedOnly||!r.sheetDraft) && (!chosen||r.book===chosen)).filter(r=>(asOf||!from||r.date>=from)&&(!to||r.date<=to));
   let headers,records=[],moneyColumns=[];
   if(kind==='Income and expenses'||asOf){
     headers=['Item','Amount (LAK)'];moneyColumns=[1];
@@ -461,11 +539,11 @@ function reportData(){
     records=asOf?[['Assets',net(rows,'Asset')],['Liabilities',liabilities],['Equity before earnings',equity],['Accumulated earnings',inc-exp],['Total liabilities and equity',liabilities+equity+inc-exp]]:
       [['Income',inc],['Expenses',exp],['Net income',inc-exp]];
   }else if(kind==='General ledger'){
-    headers=['Code','Account','Date','Book','Project','Category','Description','Reference','Debit (LAK)','Credit (LAK)','Status'];moneyColumns=[8,9];
+    headers=['Code','Account','Date','Book','Description','Reference','Debit (LAK)','Credit (LAK)','Status'];moneyColumns=[6,7];
     for(const book of data.books.filter(b=>!chosen||b===chosen))
       for(const account of chartFor(book).filter(a=>a.use==='Posting'))
         for(const line of rows.filter(r=>r.book===book&&r.code===account.code).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id))){
-          records.push([account.code,account.name,displayDate(line.date),book,line.project||'',line.category||'',line.lineMemo||line.memo,line.reference||'',line.debit,line.credit,line.sheetDraft?'Balanced draft':'Posted']);
+          records.push([account.code,account.name,displayDate(line.date),book,line.lineMemo||line.memo,line.reference||'',line.debit,line.credit,line.sheetDraft?'Balanced draft':'Posted']);
         }
   }else{
     headers=['Book','Code','Account','Debit (LAK)','Credit (LAK)'];moneyColumns=[3,4];
@@ -479,11 +557,11 @@ function reportData(){
       records.push([book,'','Total',drTotal/100,crTotal/100]);
     }
   }
-  const scope=[chosen||'All books',projectFilter||'All projects',categoryFilter||'All categories',asOf?'Beginning':from||'Beginning',to||'All dates',el('reportBasis').value];
+  const scope=[chosen||'All books',asOf?'Beginning':from||'Beginning',to||'All dates',el('reportBasis').value];
   const html='<div class="table"><table><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+
     records.map(row=>'<tr>'+row.map((v,i)=>'<td>'+esc(moneyColumns.includes(i)?amount(v):v)+'</td>').join('')+'</tr>').join('')+'</table></div>';
   el('result').innerHTML='<p class="sub">'+esc(scope.join(' · '))+'</p>'+html;
-  reportExport={name:kind,rows:[[kind],['Book','Project','Category','From','Through','Entry status'],scope,[],headers,...records]};
+  reportExport={name:kind,rows:[[kind],['Book','From','Through','Entry status'],scope,[],headers,...records]};
 }
 function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,expense,openingFunds,groups,postedCount,pending,basis}){
   const width=900,pad=52,inner=width-2*pad;
@@ -596,7 +674,7 @@ function csv(name,rows){
   document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),60000);
 }
 function downloadReport(){if(reportExport)csv(reportExport.name,reportExport.rows);}
-function downloadJournal(){csv('Journal',[['Entry ID','Date','Book','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Project','Category','Reference'],...filtered().map(r=>[r.id,r.date,r.book,r.lineMemo||r.memo,r.code,r.name,r.type,r.debit,r.credit,r.by,r.project,r.category,r.reference])]);}
+function downloadJournal(){csv('Journal',[['Entry ID','Date','Book','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Reference'],...filtered().map(r=>[r.id,r.date,r.book,r.lineMemo||r.memo,r.code,r.name,r.type,r.debit,r.credit,r.by,r.reference])]);}
 function downloadAccounts(){const book=el('chartBook').value;csv('Accounts - '+book,[['Book','Code','Account name','Classification','Parent code','Use','Cash / bank'],...chartFor(book).map(a=>[book,a.code,a.name,a.type,a.parent,a.use,a.role])]);}
 function bookSettings(){
   return field('Book types','<span class="sub">'+esc(data.books.join(' · '))+'</span><input id="newBookType" maxlength="80" placeholder="New book name">')+

@@ -65,3 +65,32 @@ test('generated sidebar includes the theme and has no external Pages dependencie
   assert.doesNotMatch(bound,/<script src=|<link rel="stylesheet"/);
   assert.match(bound,/google\.script\.run\.withSuccessHandler/);
 });
+
+test('monthly spending nets posted expense lines within each book and links split entries to the journal', () => {
+  const app = read('docs/index.html').match(/<script>([\s\S]*?)<\/script>/)[1];
+  const modal = {addEventListener() {}};
+  const context = vm.createContext({
+    window: {}, location: {search: ''}, URLSearchParams,
+    document: {getElementById: () => modal, addEventListener() {}},
+    ledgerGoogle: {authorized: () => false, prepare: () => new Promise(() => {})}
+  });
+  vm.runInContext(app, context);
+  const base = {id:'split',book:'Personal',code:'5100',name:'Food',type:'Expense',date:'2026-11-01',debit:0,credit:0};
+  context.entries = [
+    {debit:50.22}, {code:'5200',name:'Supplies',debit:100.30},
+    {type:'Asset',credit:150.52}, {id:'refund',date:'2026-11-04',credit:20.10},
+    {book:'Business',debit:15}, {sheetDraft:true,debit:12},
+    {date:'2026-10-31',debit:150}, {date:'2026-12-01',debit:200},
+    {type:'Asset',debit:1800}, {type:'Asset',credit:1800}
+  ].map(line => ({...base,...line}));
+  const report = (month,book) => context.spendingByAccount(context.entries,month,book);
+  const all = report('2026-11','');
+  assert.equal(all.totalCents,14542);
+  assert.deepEqual(Array.from(all.accounts,a=>[a.book,a.code,a.cents]),[
+    ['Personal','5200',10030],['Personal','5100',3012],['Business','5100',1500]
+  ]);
+  assert.deepEqual(Array.from(all.accounts[1].lines,item=>item.index),[3,0]);
+  assert.equal(report('2026-11','Personal').totalCents,13042);
+  assert.equal(report('2026-10','Personal').totalCents,15000);
+  assert.equal(report('2026-10','Business').accounts.length,0);
+});

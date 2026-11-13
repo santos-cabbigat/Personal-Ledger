@@ -19,7 +19,9 @@ Each person signs in with their own Google account. **Connect Google Drive** cre
 
 In **Accounts**, enter a unique code, name, classification, optional parent code, and use (`Posting` or `Group`). Open the tab named for your book (for example **Nurturing Support**). Column A holds the entry ID, B the date, C the receipt reference, D/E the account code/name, G the description, H/I the debit/credit, and J/K the poster/time. The tab supplies the book. Add a book in app Settings or in **Settings → Book types** (column F). Each creates a separate editable journal. The app reads all book tabs, and all books share the daily numbering sequence. In a script-bound workbook choosing an account reserves an ID. A balanced entry with a date, description and at least two posting accounts records the editor and time. Other users can identify themselves from **Ledger → Enable my Sheet posting**. The app's Journal has the ID picker and edit action. Newly created workbooks without a bound script use the web app for posting.
 
-All books in the same spreadsheet share a daily series: `YYMM-DDA001` through `YYMM-DDA999`, then `B001`; `Z999` rolls to `AA001`. IDs use the transaction date. Edits keep the original posted ID and Gmail. Backup the workbook from Settings as Excel; Journal, Accounts and Reports offer CSV downloads. Report CSV uses the same book, project, category and date filters as the on-screen report.
+All books in the same spreadsheet share a daily series: `YYMM-DDA001` through `YYMM-DDA999`, then `B001`; `Z999` rolls to `AA001`. IDs use the transaction date. Edits keep the original posted ID and Gmail. Backup the workbook from Settings as Excel; Journal, Accounts and Reports offer CSV downloads. Report CSV uses the same book, entry status and date filters as the on-screen report.
+
+The **Expense** tab shows monthly spending from posted expense accounts. Select a month and book, then expand an account to see its journal lines. Refunds and credits reduce spending. Record new transactions in **Journal**.
 
 ## Deploy an update
 

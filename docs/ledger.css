@@ -98,8 +98,7 @@ dialog header button { min-width: 42px; padding: 3px 11px; font-size: 23px; }
 .body > button,.workPanel > button { margin: 3px 8px 5px 0; }
 .actions { display: flex; align-items: center; justify-content: flex-end; margin-top: 16px; }
 .actions:first-child { margin-top: 0; margin-bottom: 14px; }
-.two,.filterGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 12px; }
-.filterGrid:not(:empty) { margin: 0 0 12px; }
+.two { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 12px; }
 .line { padding: 8px 14px 14px; margin: 14px 0; background: #eee8db; border: 1px solid var(--line); border-radius: 13px; }
 summary { cursor: pointer; color: var(--teal); }
 .notice { color: #873a29; overflow-wrap: anywhere; white-space: pre-wrap; margin-top: 10px; }
@@ -125,6 +124,16 @@ tr:last-child td { border-bottom: 0; }
 .metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
 .metrics b { overflow-wrap: anywhere; }
 .rline { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 5px 0; }
+.expenseHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 15px; }
+.expenseHeading h3,.expenseHeading label { margin: 0; }
+.expenseAccount { border-top: 1px solid var(--line); }
+.expenseAccount summary { display: flex; align-items: center; gap: 12px; padding: 12px 2px; min-height: 48px; }
+.expenseAccount summary::-webkit-details-marker { display: none; }
+.expenseAccount summary::before { content: ""; flex: none; width: 7px; height: 7px; border: solid var(--teal); border-width: 0 2px 2px 0; transform: rotate(-45deg); }
+.expenseAccount[open] summary::before { transform: rotate(45deg); }
+.expenseAccount .entry { min-width: 0; }
+.expenseAccount .entryText { overflow-wrap: anywhere; }
+.expenseAccount .item { padding-left: 20px; }
 .statement footer { font-size: 12px; color: var(--muted); }
 .statementImage { width: 100%; height: auto; display: block; }
 .reportClean { padding: 8px; }
@@ -157,7 +166,7 @@ tr:last-child td { border-bottom: 0; }
 }
 @media (max-width:390px) {
   h1 { font-size: 17px; }
-  .two,.filterGrid { gap: 6px; }
+  .two { gap: 6px; }
   .metrics { grid-template-columns: 1fr; }
   .entryIcon { display: none; }
 }
