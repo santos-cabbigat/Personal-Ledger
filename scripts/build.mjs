@@ -5,8 +5,10 @@ const write=(path,content)=>writeFile(new URL(path,root),content);
 const source=await read('docs/index.html'), backend=await read('apps-script/Code.gs');
 const reporting=await read('apps-script/Reporting.gs');
 const manifest=await read('apps-script/appsscript.json');
-const live=source.replace(/<script>\s*if \(location\.origin[\s\S]*?<\/script>/,'')
-  .replace(/<script src="demo\.js(?:\?[^"]*)?"><\/script>/,'');
+const css=await read('docs/ledger.css');
+const live=source.replace('<link rel="stylesheet" href="ledger.css">',()=>'<style>'+css+'</style>')
+  .replace('<script src="google-client.js"></script>','')
+  .replace('<script src="demo.js"></script>','');
 await write('apps-script/Index.html',live);
 const demoPath='docs/demo.js';
 const demo=(await read(demoPath)).split('// Sequence is shared by both books')[0].trimEnd();
@@ -17,7 +19,7 @@ const single=backend.replace("properties.getProperty('LEDGER_ID')","properties.g
   '\n'+reporting+'\nconst LEDGER_HTML_ = '+JSON.stringify(live)+';\n';
 const js=value=>JSON.stringify(value).replaceAll('<','\\u003c');
 const installer=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Update Personal &amp; Business Ledger</title><style>body{max-width:42rem;margin:5vh auto;padding:1.2rem;font:17px/1.5 system-ui;color:#edf4ff;background:#11182b}button{padding:.8rem 1rem;border:0;border-radius:.6rem;background:#a6eaff;color:#102137;font:inherit}textarea{display:block;width:100%;height:8rem}[hidden]{display:none}</style>
+<title>Update Personal &amp; Business Ledger</title><style>body{max-width:42rem;margin:5vh auto;padding:1.2rem;font:17px/1.5 system-ui;color:#282d28;background:#f1ecdf}button{padding:.8rem 1rem;border:0;border-radius:.6rem;background:#075c58;color:#fffaf0;font:inherit}textarea{display:block;width:100%;height:8rem}[hidden]{display:none}</style>
 <h1>Update your ledger app</h1>
 <ol><li>Open your ledger spreadsheet on a computer. Choose <b>Extensions → Apps Script</b>.</li>
 <li>Replace <b>Code.gs</b> with the complete script below, then save.<p><button id="code">Copy Code.gs</button> <button id="showCode">Show Code.gs</button></p></li>

@@ -1,56 +1,121 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shared ledger</title><script>
-if (location.origin === 'https://santos-cabbigat.github.io' && !new URLSearchParams(location.search).has('preview')) {
-  location.replace('https://script.google.com/macros/s/AKfycbywWbAojmt9_zXueXPOqSXSqpJwDwyUydy_7sUJBxclgC9pc71yxjringWlJfGTxw/exec');
-}
-</script><style>
-:root{color-scheme:dark;--bg:#0c1022;--panel:#141c34;--text:#eff4ff;--muted:#b2c2da;--line:#344462;--cyan:#70e8fa;--rose:#f399e5}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 91% 0%,#233d68 0,transparent 38%),var(--bg);color:var(--text);font:16px/1.42 system-ui,sans-serif;min-height:100vh}main{max-width:680px;margin:auto;padding:22px 16px 48px}header,.row,.actions{display:flex;align-items:center;justify-content:space-between;gap:9px}header{padding-bottom:16px;border-bottom:1px solid var(--cyan)}h1{font-size:clamp(20px,5vw,29px);margin:0;overflow-wrap:anywhere}h2{font-size:19px;margin:16px 0 10px}h3{font-size:16px}button,.link,select,input{border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit;padding:9px 12px;min-height:44px}button,.link{cursor:pointer;text-decoration:none}button:disabled{opacity:.55;cursor:wait}button:focus-visible,a:focus-visible{outline:2px solid var(--cyan)}.gear{font-size:19px;padding:6px 10px}.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:17px 0}.tiles button{text-align:left;font-weight:650;min-height:47px;border:1px solid transparent;background:linear-gradient(110deg,#251b37,#101f3a) padding-box,linear-gradient(110deg,#dc81d6,#68d5f6) border-box}.tiles i{font-style:normal;color:var(--cyan);display:inline-block;width:25px}.panel{background:#141b30;border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}.kpi{font-size:25px;font-variant-numeric:tabular-nums;font-weight:650}.sub,.muted,small{color:var(--muted);font-size:13px}.money{white-space:nowrap;font-variant-numeric:tabular-nums}.item{padding:10px 0;border-bottom:1px solid #33405a;display:block;width:100%;text-align:left;background:none;border-radius:0;border-left:0;border-right:0;border-top:0}.item:last-child{border-bottom:0}.item strong{overflow-wrap:anywhere}dialog{width:min(95vw,560px);max-height:90dvh;overflow:auto;border:1px solid #84dff1;background:#10182d;color:var(--text);border-radius:18px;padding:18px;box-shadow:0 12px 80px #050912}dialog::backdrop{background:#030610bd}dialog h2{margin:0}.body{margin:13px 0}.line{border-top:1px solid var(--line);padding:10px 0}label{display:block;font-size:13px;color:var(--muted);margin:8px 0}label select,label input{margin-top:3px;width:100%;color:var(--text);font-size:16px}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions{justify-content:flex-end;flex-wrap:wrap;margin-top:14px}.primary{background:#a9edff;color:#071824;font-weight:650}.notice{color:#ffc7a2;white-space:pre-wrap;overflow-wrap:anywhere}.status{min-height:18px;font-size:13px;color:var(--muted)}.table{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:right;padding:8px 4px;border-bottom:1px solid var(--line)}td:first-child,th:first-child{text-align:left}.link{display:inline-flex;align-items:center}.wrap{flex-wrap:wrap}dialog button[aria-label=Close]{min-width:44px} [hidden]{display:none!important}
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f1ecdf"><title>Personal &amp; Business Ledger</title>
+<link rel="stylesheet" href="ledger.css">
+</head><body>
+<main>
+  <header class="hero"><div class="brand"><div class="brandMark"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
+  <nav class="navRail" aria-label="Ledger navigation"><button type="button" data-view="Overview" onclick="overview()" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button><button type="button" data-view="Journal" onclick="journals()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg><span>Journal</span></button><button type="button" data-view="Accounts" onclick="accountsView()"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg><span>Accounts</span></button><button type="button" data-view="Expense" onclick="entryForm('Expense')"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg><span>Expense</span></button><button type="button" data-view="Reports" onclick="reports()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18M5 16v-4h3v4m3 0V8h3v8m3 0V4h3v12"/></svg><span>Reports</span></button></nav>
+  <div class="sectionHead"><div><h2 id="viewTitle">Overview</h2><div class="status" id="status" role="status"></div></div>
+  <div class="filters" id="tools" hidden><select id="scope" aria-label="Filter by book" onchange="changeScope()"><option value="">All books</option></select><button class="iconButton" onclick="load()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.1 8a7.5 7.5 0 0 1 12.5-2L20 9M4 15l2.4 3A7.5 7.5 0 0 0 19 16"/></svg> Refresh</button></div></div>
+  <div id="homeData"></div><section class="workPanel" id="work" hidden></section>
+</main>
+<dialog id="modal" aria-labelledby="heading"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
+<script src="google-client.js"></script>
+<script src="demo.js"></script><script>
 
-body{background:radial-gradient(ellipse at 90% 0%,#1c2148 0%,transparent 45%),#0a1021}
-main{padding-top:12px}header.hero{min-height:91px;position:relative;isolation:isolate;overflow:hidden;padding:13px 7px 16px 0;border:0;border-bottom:1px solid transparent;border-image:linear-gradient(90deg,#ef74cd,#826af9,#68e1f3) 1}
-.hero h1{max-width:68%;letter-spacing:-.037em;line-height:1.12;text-wrap:balance;font-size:clamp(21px,5vw,31px)}
-.orb{position:absolute;right:32px;top:-20px;width:124px;height:124px;border-radius:50%;opacity:.65;z-index:-1;background:radial-gradient(circle,#80dcff 1px,transparent 1.6px) 0 0/5px 5px,radial-gradient(at 35% 30%,#7b3385,#234c80 50%,transparent 72%);mask-image:radial-gradient(circle at 56% 42%,#000 18%,#0008 48%,transparent 72%);transform:rotate(-20deg)}
-.hero .gear{background:#111b32c9}.tiles{margin:14px 0 16px}.tiles button{display:flex;align-items:center;gap:8px;font-size:15px}.tiles i{display:grid;place-items:center;width:22px}.tiles svg{width:19px;height:19px;fill:none;stroke:#b4e9ff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.panel{background:linear-gradient(110deg,#1c203c,#131e36);border-top-color:#927acc}.kpi{font-size:30px}.status{margin-top:8px;color:#c3b6f2}.item{border-color:#273552}button{touch-action:manipulation}button:active{filter:brightness(1.22)}h2{letter-spacing:-.02em}
-.statement{color:#23213b;background:#fff;border-radius:16px;overflow:hidden;text-align:left;font-variant-numeric:tabular-nums}.statementHead{background:linear-gradient(112deg,#191e38,#483870);padding:23px 20px;color:white;border-bottom:4px solid #8cded3}.statementHead small{color:#d6fcf7;font-size:10px;font-weight:750;letter-spacing:.14em}.statementHead h2{font-size:29px;color:white;margin:6px 0}.statementHead p{margin:0;color:#e7def9;font-size:14px}.statement section,.statement footer{padding:16px 20px}.statement section+section{border-top:1px solid #e6e3ef}.statement h3{font-size:16px;margin:0 0 12px;color:#46346a}.statement .closing{background:#e1f5f0;border-left:4px solid #408a80;padding:10px 14px;display:grid;gap:2px;margin:0 0 13px}.closing span,.metrics small{font-size:12px;color:#514d65}.closing strong{font-size:27px;overflow-wrap:anywhere}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.metrics small,.metrics b{display:block}.metrics b{font-size:clamp(12px,2.6vw,17px);overflow-wrap:anywhere}.statement h4{margin:12px 0 4px;color:#51416b;font-size:13px}.rline{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #efedf3;font-size:13px}.statement footer{background:#f0edf7;color:#514467;font-size:12px}.statementImage{display:block;width:100%;height:auto}.reportClean .actions .link{font-size:14px}.reportClean .statement{border-radius:3px}.reportClean>header{display:none}.reportClean{background:#fff;padding:4px}.reportClean .body{margin:0}.reportClean .actions{padding:4px}.reportClean .actions button{font-size:12px}.reportClean [hidden]{display:none}
-</style></head><body><main><header class="hero"><div class="orb" aria-hidden="true"></div><h1 id="title">Shared ledger</h1><button class="gear" aria-label="Settings" onclick="settings()">⚙</button></header><nav class="tiles"><button onclick="journals()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2zM8 4v16m3-11h5m-5 4h4"/></svg></i>Journal</button><button onclick="accountsView()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="5" rx="1"/><path d="M12 8v4M5 15v-3h14v3"/><rect x="2" y="15" width="6" height="5" rx="1"/><rect x="16" y="15" width="6" height="5" rx="1"/></svg></i>Accounts</button><button onclick="entryForm('Expense')"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg></i>Expense</button><button onclick="reports()"><i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 17v-4h3v4m3 0V8h3v9m3 0V4h3v13"/></svg></i>Reports</button></nav><div class="row"><select id="scope" aria-label="Home book" onchange="home()"><option value="">All books</option></select><button onclick="load()">Refresh</button></div><div class="status" id="status" role="status"></div><div id="homeData"></div></main><dialog id="modal"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
-<script src="demo.js?v=20261111-books-2"></script><script>
 'use strict';
 const el=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const amount=n=>'₭'+Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const inSheet = Boolean(window.google && google.script && google.script.run);
+const preview = !inSheet && new URLSearchParams(location.search).get('preview')==='1';
+const pages = !inSheet && !preview;
 const call = inSheet
   ? (method,...args)=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[method](...args))
-  : previewCall;
+  : preview ? previewCall : ledgerGoogle.call;
 let data=null,draft=null,locked=false;
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden && data && !locked && !el('modal').open)load();
 });
 function ready(){if(data)return true;el('status').textContent='Connect Google Drive or open your ledger to continue.';return false}
-let loadVersion=0;
+let loadVersion=0, currentView='Overview';
+function setView(name) {
+  currentView=name;
+  el('viewTitle').textContent=name;
+  el('homeData').hidden=name!=='Overview';
+  el('work').hidden=name==='Overview';
+  for (const button of document.querySelectorAll('.navRail button')) {
+    if(button.dataset.view===name) button.setAttribute('aria-current','page');
+    else button.removeAttribute('aria-current');
+  }
+}
+function overview(){setView('Overview'); if(data) home()}
+function workspace(name,html) {
+  if(el('modal').open) closeDialog();
+  setView(name);
+  el('work').innerHTML=html;
+}
+function changeScope() {
+  if(el('modal').open)return;
+  if(currentView==='Journal')journals();
+  else if(currentView==='Accounts')accountsView();
+  else if(currentView==='Reports')reports();
+  else home();
+}
+function welcome(message='') {
+  setView('Overview');
+  el('tools').hidden=true;
+  for(const button of document.querySelectorAll('.navRail button, .gear'))button.disabled=button.dataset.view!=='Overview';
+  const installed='<a class="link '+(ledgerGoogle.configured()?'':'primary')+'" target="_blank" rel="noopener" href="'+ledgerGoogle.webApp+'">Open existing Google app</a>';
+  const login=ledgerGoogle.configured()?btn('Sign in with Google','signIn()',true):'';
+  const sample='<a class="link" href="?preview=1">Explore sample ledger</a>';
+  el('homeData').innerHTML='<section class="panel welcome"><div><h3>Open your ledger</h3><p>'+
+    (ledgerGoogle.configured()?'Sign in with the Google account that has access to your workbook.':'Use your existing Google app for live entries while the new connection is being set up.')+
+    '</p><div class="actions">'+login+installed+sample+'</div></div><div class="bookWell" aria-hidden="true"><div class="bookCover"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div></div></section>';
+  el('status').textContent=message||'Google Sheets connection';
+}
+async function signIn(){
+  try { await ledgerGoogle.signIn(); await load(); }
+  catch(error) { el('status').textContent=error.message; }
+}
+async function reconnect() {
+  try { await ledgerGoogle.signIn(); el('err').textContent='Signed in. You can retry saving.'; }
+  catch(error) { el('err').textContent=error.message; }
+}
 async function load(initial){
   const version=++loadVersion;
-  el('status').textContent=inSheet?'Reading Google Sheet…':'Loading sample entries…';
+  el('status').textContent=preview?'Loading sample entries…':'Reading Google Sheet…';
   try{
+    if(pages && !ledgerGoogle.authorized()) {
+      await ledgerGoogle.prepare();
+      if(version!==loadVersion)return;
+      if(!data)welcome();
+      else el('status').innerHTML='Google sign-in expired. '+btn('Reconnect','signIn()');
+      return;
+    }
     const next=initial || await call('state');
-    if(next.loadError)throw Error(next.loadError);
     if(version!==loadVersion)return;
+    if(next.loadError)throw Error(next.loadError);
     if(next.connected===false){
-      data=null;
+      data=null; setView('Overview');
+      el('tools').hidden=true;
       el('title').textContent='Personal & Business Ledger';
       el('status').textContent='Signed in as '+next.email;
-      el('homeData').innerHTML='<div class="panel"><h2>Your ledger</h2>'+connectButtons()+'</div>';
+      el('homeData').innerHTML='<div class="panel"><h3>Your ledger</h3>'+connectButtons()+'</div>';
       return;
     }
     const selected=el('scope').value;
     data=next;
+    for(const button of document.querySelectorAll('.navRail button,.gear'))button.disabled=false;
+    el('tools').hidden=false;
     const books=[...new Set([...data.books,...data.entries.map(row=>row.book)])];
     el('scope').innerHTML='<option value="">All books</option>'+options(books,selected);
     el('title').textContent=data.title;
     document.title=data.title;
-    el('status').textContent=inSheet?'Saved books · Google Sheets':'Preview · Sample data only';
-    home();
-  }catch(e){if(version!==loadVersion)return;if(!data)el('homeData').replaceChildren();el('status').textContent=(data?'Refresh failed. Showing the last loaded entries. ':'Could not read the ledger. ')+e.message;}
+    el('status').textContent=preview?'Preview · Sample data only':'Connected to Google Sheets';
+    if(el('modal').open)return;
+    if(currentView==='Reports' && el('report')){
+      const reportBook=el('reportBook').value;
+      el('reportBook').innerHTML='<option value="">All books</option>'+options(books,reportBook);
+      reportData();
+    }else if(currentView==='Accounts')accountsView(el('chartBook')?.value);
+    else changeScope();
+  }catch(e){
+    if(version!==loadVersion)return;
+    if(pages && !data){welcome(e.message);return;}
+    el('status').textContent=(data?'Refresh failed. Showing the last loaded entries. ':'Could not read the ledger. ')+e.message;
+  }
 }
 function connectButtons(){
   return btn('Connect Google Drive','connectDrive()',true)+btn('Open existing ledger','existingLedgerForm()');
@@ -59,6 +124,11 @@ function connectDrive(){dialog('Connect Google Drive','<p>Open your own ledger, 
 function existingLedgerForm(){dialog('Open existing ledger',field('Link to your ledger spreadsheet','<input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/…">')+btn('Open',"write('openExistingLedger',[el('sheetUrl').value])",true));}
 function dialog(title,html){el('modal').classList.remove('reportClean');el('heading').textContent=title;el('content').innerHTML=html;el('err').textContent='';if(!el('modal').open)el('modal').showModal();el('modal').scrollTop=0}
 function closeDialog(){if(!locked)el('modal').close()}
+el('modal').addEventListener('click',event=>{
+  if(event.target!==el('modal'))return;
+  const r=el('modal').getBoundingClientRect();
+  if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeDialog();
+});
 el('modal').addEventListener('cancel',event=>{if(locked)event.preventDefault()});
 function guard(f){try{f()}catch(e){el('err').textContent=e.message}}
 function options(values,current){return values.map(v=>'<option '+(v===current?'selected':'')+'>'+esc(v)+'</option>').join('')}
@@ -86,9 +156,26 @@ function displayDate(value){
   const month=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(match[2])-1];
   return month?match[3]+'-'+month+'-'+match[1]:value;
 }
-function entryList(groups){return groups.map(g=>{const r=g[0],index=data.entries.indexOf(r);return '<button class="item" onclick="detail('+index+')"><span class="row"><strong>'+esc(r.memo)+'</strong><b class="money">'+amount(g.reduce((a,l)=>a+l.debit,0))+'</b></span><small>'+esc(r.sheetDraft?'Ready to post · '+r.id:r.id)+' · '+esc(displayDate(r.date))+' · '+esc(r.book)+(r.project?' · '+esc(r.project):'')+'</small></button>'}).join('')||'<p class="muted">No entries yet.</p>'}
+function entryList(groups){
+  return groups.map(group=>{
+    const row=group[0],index=data.entries.indexOf(row);
+    const meta=[row.sheetDraft?'Ready to post · '+row.id:row.id,displayDate(row.date),row.book,row.project].filter(Boolean).join(' · ');
+    const total=group.reduce((sum,line)=>sum+Math.round(line.debit*100),0)/100;
+    return '<button class="item" onclick="detail('+index+')"><span class="entry"><span class="entryIcon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg></span><span class="entryText"><strong>'+esc(row.memo)+'</strong><small>'+esc(meta)+'</small></span><b class="money">'+amount(total)+'</b></span></button>';
+  }).join('')||'<p class="empty">No entries for this selection.</p>';
+}
 function net(rows,type){return rows.filter(r=>r.type===type).reduce((s,r)=>s+Math.round(r.debit*100)-Math.round(r.credit*100),0)/100}
-function home(){if(!data)return;const names=categories();if(!names.includes(categoryFilter))categoryFilter='';const picker=projectPicker()+(names.length?field('Category','<select id="categoryFilter" onchange="categoryFilter=this.value;home()"><option value="">All categories</option>'+options(names,categoryFilter)+'</select>'):'');let rows=filtered();el('homeData').innerHTML=picker+sheetWarnings()+'<section class="panel"><small>Net income · All dates</small><div class="kpi">'+amount(-net(rows,'Income')-net(rows,'Expense'))+'</div></section><h2>Recent entries</h2>'+entryList(groupEntries(rows).slice(0,5))}
+function home(){
+  if(!data)return;
+  const names=categories();
+  if(!names.includes(categoryFilter))categoryFilter='';
+  const picker=projectPicker()+(names.length?field('Category','<select id="categoryFilter" onchange="categoryFilter=this.value;home()"><option value="">All categories</option>'+options(names,categoryFilter)+'</select>'):'');
+  const rows=filtered(),income=-net(rows,'Income'),expense=net(rows,'Expense');
+  el('homeData').innerHTML='<div class="filterGrid">'+picker+'</div>'+sheetWarnings()+
+    '<div class="overviewGrid"><section class="panel balance"><div class="balanceLabel"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v3M3 8h17v12H5a2 2 0 0 1-2-2zm17 4h-5v4h5"/></svg> Net income</div><div class="kpi">'+amount(income-expense)+'</div><small>'+esc(el('scope').value||'All books')+' · All dates</small></section>'+
+    '<section class="panel totals"><div class="summaryLine"><span>Income</span><strong>'+amount(income)+'</strong></div><div class="summaryLine"><span>Expenses</span><strong>'+amount(expense)+'</strong></div></section></div>'+
+    '<section class="entryPanel"><div class="sectionHead compact"><h3>Recent entries</h3><button class="textButton" onclick="journals()">View journal →</button></div>'+entryList(groupEntries(rows).slice(0,5))+'</section>';
+}
 function detail(index){
   const row=data.entries[index],lines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
   dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,row.project,row.category,displayDate(row.date)].filter(Boolean).join(' · '))+'</p>'+
@@ -110,14 +197,14 @@ function idPicker(groups){
   return field('Find entry ID','<select id="entryIdPicker" onchange="if(this.value)detail(Number(this.value))"><option value="">Choose an entry ID</option>'+
     posted.map(([line])=>'<option value="'+data.entries.indexOf(line)+'">'+esc(line.id)+' · '+esc(line.memo)+'</option>').join('')+'</select>');
 }
-function journals(){if(!ready())return;const groups=groupEntries(filtered());dialog('Journal','<div class="actions">'+btn('New entry',"entryForm('Journal')",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
+function journals(){if(!ready())return;const groups=groupEntries(filtered());workspace('Journal','<div class="actions">'+btn('New entry',"entryForm('Journal')",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
 function inBook(account,book){return account.book===undefined || account.book===book}
 function chartFor(book){return data.accounts.filter(a=>inBook(a,book))}
 function accountsView(chosen){
   if(!ready())return;
   const book=chosen||el('scope').value||data.books[0];
   const accounts=chartFor(book);
-  dialog('Chart of accounts',field('Book','<select id="chartBook" onchange="accountsView(this.value)">'+options(data.books,book)+'</select>')+
+  workspace('Accounts',field('Book','<select id="chartBook" onchange="accountsView(this.value)">'+options(data.books,book)+'</select>')+
     btn('Add account','newAccount()')+btn('Download accounts CSV','downloadAccounts()')+
     (accounts.map(a=>'<button class="item" onclick="accountDetail('+data.accounts.indexOf(a)+')"><strong>'+esc(a.code)+' · '+esc(a.name)+'</strong><br><small>'+esc([a.type,a.use,a.role,a.parent?'Parent '+a.parent:''].filter(Boolean).join(' · '))+'</small></button>').join('')||'<p>No accounts in this book yet.</p>'));
 }
@@ -135,7 +222,9 @@ function newAccount(){
   dialog('Add account',field('Book type','<select id="accountBook" onchange="parents()">'+options(data.books,book)+'</select>')+field('Code','<input id="code" inputmode="numeric">')+field('Name','<input id="accountName" maxlength="80">')+field('Classification','<select id="classify" onchange="parents()">'+options(['Asset','Liability','Equity','Income','Expense'])+'</select>')+field('Parent account','<select id="parent"></select>')+field('Use','<select id="use" onchange="parents()">'+options(['Posting','Group'])+'</select>')+field('Cash / bank role','<select id="role"><option value="">None</option>'+options(['Bank','Cash'])+'</select>')+btn('Save account','addAccount()',true));parents();
 }
 function parents(){el('parent').innerHTML='<option value="">No parent</option>'+acOptions(chartFor(el('accountBook').value).filter(a=>a.type===el('classify').value&&a.use==='Group'));el('role').disabled=el('classify').value!=='Asset'||el('use').value!=='Posting';if(el('role').disabled)el('role').value=''}
-async function write(method,args,after){if(locked)return;locked=true;el('err').textContent='Saving…';let result;try{result=await call(method,...args)}catch(e){el('err').textContent=e.message;locked=false;return}locked=false;el('modal').close();await load();if(after&&data)after(result)}
+async function write(method,args,after){if(locked)return;locked=true;el('err').textContent='Saving…';let result;try{result=await call(method,...args)}catch(e){el('err').textContent=e.message;locked=false;
+    if(pages&&!ledgerGoogle.authorized())el('err').insertAdjacentHTML('beforeend',' '+btn('Reconnect','reconnect()'));
+    return}locked=false;el('modal').close();await load();if(after&&data)after(result)}
 function addAccount(){const book=el('accountBook').value;write('saveAccount',[{ledgerId:data.ledgerId,book,role:el('role').value,code:el('code').value,name:el('accountName').value,type:el('classify').value,parent:el('parent').value,use:el('use').value}],()=>accountsView(book))}
 function entryForm(mode,keep=false){if(!ready())return;if(!keep){draft={mode,key:crypto.randomUUID(),ledgerId:data.ledgerId,reference:'',project:projectFilter,category:categoryFilter,book:el('scope').value||data.books[0]||'',date:data.today,memo:'',lines:[{code:mode==='Expense'?'5100':'1100',debit:'',credit:''},{code:mode==='Expense'?'1100':'4100',debit:'',credit:''}]}}dialog(draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':mode==='Expense'?'Record expense':'New journal entry','<div class="two">'+field('Book','<select id="book" onchange="changeEntryBook()">'+options([...new Set([...data.books,draft.book].filter(Boolean))],draft.book)+'</select>')+field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+field('Project (optional)','<input id="project" list="projectNames" maxlength="80" value="'+esc(draft.project)+'" placeholder="Choose or type a project name"><datalist id="projectNames">'+options(projects(),draft.project)+'</datalist>')+field('Category (optional)','<input id="category" list="categoryNames" maxlength="80" value="'+esc(draft.category)+'" placeholder="Choose or type a category"><datalist id="categoryNames">'+options(categories(),draft.category)+'</datalist>')+field('Reference (optional)','<input id="reference" autocapitalize="characters" oninput="upperReference(this)" maxlength="180" value="'+esc(draft.reference)+'" placeholder="Receipt or bank transfer number">')+field('Description','<input id="memo" maxlength="180" value="'+esc(draft.memo)+'">')+'<div id="lines"></div><div class="actions">'+(mode==='Journal'?btn('Add line','addLine()'):'')+btn('Review','guard(review)',true)+'</div>');drawLines()}
 function formatAmount(value){
@@ -185,7 +274,7 @@ function post(){
   });
 }
 function basisPicker(id,change){return field('Entry status','<select id="'+id+'" onchange="'+change+'">'+options(['All balanced entries','Posted only'])+'</select>')}
-function reports(){if(!ready())return;dialog('Reports',btn('Monthly financial report','monthlyReport()',true)+field('Book','<select id="reportBook" onchange="reportData()"><option value="">All books</option>'+options(data.books,el('scope').value)+'</select>')+basisPicker('reportBasis','reportData()')+field('Report','<select id="report" onchange="reportData()">'+options(['Trial balance','Income and expenses','Balance sheet','General ledger'])+'</select>')+'<div class="two">'+field('From','<input type="date" id="from" onchange="reportData()">')+field('Through','<input type="date" id="through" onchange="reportData()">')+'</div><div id="result"></div>'+btn('Download report CSV','downloadReport()'));reportData()}
+function reports(){if(!ready())return;workspace('Reports',btn('Monthly financial report','monthlyReport()',true)+field('Book','<select id="reportBook" onchange="reportData()"><option value="">All books</option>'+options(data.books,el('scope').value)+'</select>')+basisPicker('reportBasis','reportData()')+field('Report','<select id="report" onchange="reportData()">'+options(['Trial balance','Income and expenses','Balance sheet','General ledger'])+'</select>')+'<div class="two">'+field('From','<input type="date" id="from" onchange="reportData()">')+field('Through','<input type="date" id="through" onchange="reportData()">')+'</div><div id="result"></div>'+btn('Download report CSV','downloadReport()'));reportData()}
 let reportExport;
 function reportData(){
   const kind=el('report').value,from=el('from').value,to=el('through').value,asOf=kind==='Balance sheet';
@@ -231,7 +320,7 @@ function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,ex
   const canvas=document.createElement('canvas'),scale=1.5;
   canvas.width=width*scale;canvas.height=1230*scale;
   const ctx=canvas.getContext('2d');ctx.scale(scale,scale);
-  const ink='#211f39',muted='#635f77',navy='#191e38',violet='#513b79',teal='#175e57';
+  const ink='#26332e',muted='#68685c',navy='#184f49',violet='#28655a',teal='#175e57';
   const font=(size,weight=400)=>{ctx.font=weight+' '+size+'px Arial, sans-serif'};
   const text=(value,x,y,size,weight=400,color=ink)=>{font(size,weight);ctx.fillStyle=color;ctx.fillText(String(value),x,y)};
   const fit=(value,x,y,max,size,weight,color)=>{font(size,weight);while(ctx.measureText(value).width>max&&size>14)font(--size,weight);text(value,x,y,size,weight,color)};
@@ -239,12 +328,12 @@ function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,ex
   const money=n=>amount(n);
   rect(0,0,width,1230,'#ffffff');
   const grad=ctx.createLinearGradient(0,0,width,250);grad.addColorStop(0,navy);grad.addColorStop(1,violet);rect(0,0,width,235,grad);
-  text('MONTHLY FINANCIAL REPORT',pad,54,17,700,'#baf4e9');fit(book,pad,130,inner,58,700,'#ffffff');
-  text(periodLabel+(asOf?'   ·   Transactions through '+asOf:''),pad,182,23,400,'#eee6ff');
-  rect(0,235,width,7,'#8ad9c9');
+  text('MONTHLY FINANCIAL REPORT',pad,54,17,700,'#dfebd8');fit(book,pad,130,inner,58,700,'#ffffff');
+  text(periodLabel+(asOf?'   ·   Transactions through '+asOf:''),pad,182,23,400,'#f4eddf');
+  rect(0,235,width,7,'#a8c7ad');
   let y=288;
   text('Closing bank balance',pad,y,24,600,teal);fit(money(opening+received-spent),pad,y+65,inner,62,700,ink);
-  y+=96;rect(pad,y,inner,98,'#e9f6f3');
+  y+=96;rect(pad,y,inner,98,'#e8eddf');
   const metrics=[['Opening balance',opening],['Bank receipts',received],['Bank payments',spent]];
   metrics.forEach(([label,n],i)=>{const x=pad+18+i*inner/3;text(label,x,y+34,18,400,muted);fit(money(n),x,y+72,inner/3-32,27,700,ink)});
   y+=145;
@@ -253,14 +342,14 @@ function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,ex
   for(const line of wrap(summary,22,inner)){text(line,pad,y,22,400,muted);y+=30}
   y+=24;
   const detail=(title,total,items,empty)=>{
-    rect(pad,y-20,6,31,'#a892d3');text(title,pad+18,y+2,26,700,violet);
+    rect(pad,y-20,6,31,'#6e9e88');text(title,pad+18,y+2,26,700,violet);
     y+=44;
     const rows=items.slice().sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
     const visible=rows.length>3?[...rows.slice(0,2),['Other accounts',rows.slice(2).reduce((sum,x)=>sum+x[1],0)]]:rows;
     if(!visible.length){text(empty,pad+4,y,20,400,muted);y+=32;}
     for(const [label,n] of visible){
       const end=money(n);font(22,600);const tw=ctx.measureText(end).width;fit(label,pad+4,y,inner-tw-28,21,400,ink);text(end,width-pad-tw,y,22,600,ink);
-      rect(pad,y+12,inner,1,'#e6e1ed');y+=45;
+      rect(pad,y+12,inner,1,'#ded7c8');y+=45;
     }
     text('Total',pad+4,y,20,700,ink);font(23,700);const val=money(total);text(val,width-pad-ctx.measureText(val).width,y,23,700,ink);y+=64;
   };
@@ -271,7 +360,7 @@ function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,ex
   }
   detail('Sources of income',income,sources,'No income recorded for this period.');
   detail('Expenditure by account',expense,uses,'No expenses recorded for this period.');
-  rect(pad,y-17,inner,60,'#eee9f8');text('Surplus / (deficit)',pad+16,y+21,20,600,violet);
+  rect(pad,y-17,inner,60,'#e8e3d5');text('Surplus / (deficit)',pad+16,y+21,20,600,violet);
   const result=money(income-expense);font(25,700);text(result,width-pad-16-ctx.measureText(result).width,y+22,25,700,violet);
   y+=82;
   text('Amounts in Lao kip',pad,y,16,500,muted);
@@ -349,7 +438,7 @@ function saveBookTypeFromForm(){
   write('saveBookType',[name,data.ledgerId],settings);
 }
 function sheetSettings(){if(!ready())return;dialog('Settings',(data.owner?field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()'):'<b>'+esc(data.title)+'</b>')+bookSettings()+'<p><a class="link" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx">Download all data (Excel)</a></p>'+connectButtons()+'<p class="sub">Signed in as '+esc(data.email)+'</p><a class="link" href="'+esc(data.url)+'" target="_blank" rel="noopener">Open Google Sheet</a>'+(data.owner?'<p>To add another person, open the Sheet, tap Share, and invite their Google account as an editor.</p>':''))}
-function settings(){if(!ready())return;if(inSheet)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+bookSettings()+'<p class="sub">Preview changes last until you reload this page.</p>')}
+function settings(){if(!ready())return;if(!preview)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+bookSettings()+'<p class="sub">Preview changes last until you reload this page.</p>')}
 function saveName(){write('renameLedger',[el('appName').value,data.ledgerId])}
 const serverLedger = null;
 const showMonthOnOpen = false;
