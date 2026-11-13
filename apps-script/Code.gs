@@ -279,11 +279,11 @@ function ensureJournalPresentation_(sheet) {
 }
 function journalRows_(sheet,bookTab) {
   if(bookTab){
-    const count=bookTab.getLastRow()-1;
+    const count=bookTab.getLastRow()-1,bookName=bookTab.getName();
     const values=count>0 ? bookTab.getRange(2,1,count,17).getValues() : [];
     const rows=values.map(r=>{
       const cells=[r[0],r[1],'',r[6],r[3],r[4],r[5],...r.slice(7,15),r[2]];
-      if(cells.some(v=>v!=='' && v!=null))cells[2]=bookTab.getName();
+      if(cells.some(v=>v!=='' && v!=null))cells[2]=bookName;
       return cells;
     });
     while(rows.length && rows[rows.length-1].every(v=>v===''))rows.pop();
@@ -583,16 +583,15 @@ function journalGroups_(rawRows) {
   });
   return groups;
 }
-function journalState_(sheet, accounts,bookTab) {
+function journalState_(sheet, accounts,bookTab,books=bookNames_(sheet),tz=sheet.getSpreadsheetTimeZone()) {
   if(!bookTab && !sheet.getSheetByName('Journal')){
-    const views=bookTabs_(sheet).map(t=>journalState_(sheet,accounts,t));
+    const views=bookTabs_(sheet).map(t=>journalState_(sheet,accounts,t,books,tz));
     return {entries:views.flatMap(v=>v.entries),warnings:views.flatMap(v=>v.warnings)};
   }
 
-  const warnings=[];
-  if(bookTab)accounts=accounts.filter(a=>accountInBook_(a,bookTab.getName()));
+  const warnings=[],bookName=bookTab?.getName(),keyPrefix=bookTab?'book:'+bookTab.getSheetId()+':':'';
+  if(bookTab)accounts=accounts.filter(a=>accountInBook_(a,bookName));
   const chart = new Map(accounts.filter(a=>a.use==='Posting').map(a=>[a.code,a]));
-  const tz=sheet.getSpreadsheetTimeZone(),books=bookNames_(sheet);
   const groups=journalGroups_(journalRows_(sheet,bookTab));
   const entries=[];
   for (const [groupKey,group] of groups) {
@@ -621,26 +620,26 @@ function journalState_(sheet, accounts,bookTab) {
         const debit=cents_(r[7]),credit=cents_(r[8]);
         if((debit>0)===(credit>0)) throw Error('Each line needs one debit or credit.');
         debitCents+=debit;creditCents+=credit;
-        return {id:id||('Sheet rows '+group[0].number+'–'+group[group.length-1].number),groupKey:bookTab?'book:'+bookTab.getSheetId()+':'+groupKey:groupKey,date,book,memo,lineMemo:String(r[3]||'').trim(),reference:String(r[15]??'').trim().toUpperCase(),project,category,code,name:String(r[5]||a.name),type:String(r[6]||a.type),
+        return {id:id||('Sheet rows '+group[0].number+'–'+group[group.length-1].number),groupKey:keyPrefix+groupKey,date,book,memo,lineMemo:String(r[3]||'').trim(),reference:String(r[15]??'').trim().toUpperCase(),project,category,code,name:String(r[5]||a.name),type:String(r[6]||a.type),
           debit:debit/100,credit:credit/100,by:String(r[9]),sheetDraft:rows.every(item=>!item[9]&&!item[11]),revision:version};
       });
       if (debitCents!==creditCents || new Set(lines.map(l=>l.code)).size<2) throw Error('Balance the debit and credit lines across at least two accounts.');
       entries.push(...lines);
-    } catch(error) { warnings.push((bookTab?bookTab.getName()+' · ':'')+'Row '+group[0].number+(id?' ('+id+')':'')+': '+error.message); }
+    } catch(error) { warnings.push((bookTab?bookName+' · ':'')+'Row '+group[0].number+(id?' ('+id+')':'')+': '+error.message); }
   }
   return {entries,warnings};
 }
 function state() {
-  const {sheet,email}=context_(true);
-  return sheet ? workbookState_(sheet,email) : {connected:false,email};
+  const {sheet,email,owner}=context_(true);
+  return sheet ? workbookState_(sheet,email,owner) : {connected:false,email};
 }
-function primaryBookName_(sheet){
-  return bookNames_(sheet).find(book=>!DEFAULT_BOOKS.includes(book))||bookNames_(sheet)[0];
+function primaryBookName_(sheet,books=bookNames_(sheet)){
+  return books.find(book=>!DEFAULT_BOOKS.includes(book))||books[0];
 }
-function workbookState_(sheet,email) {
-  const accounts=accounts_(sheet),owner=sheet.getOwner().getEmail().toLowerCase();
+function workbookState_(sheet,email,owner=sheet.getOwner().getEmail().toLowerCase()) {
+  const accounts=accounts_(sheet),books=bookNames_(sheet);
   return {connected:true,ledgerId:sheet.getId(),title:sheet.getSheetByName('Settings').getRange('B2').getDisplayValue(),
-    url:sheet.getUrl(),email,owner:email===owner,reportBook:sheet.getSheetByName('Monthly Report')?.getRange('A4').getDisplayValue()||primaryBookName_(sheet),books:bookNames_(sheet),accounts,...journalState_(sheet,accounts),today:date_(new Date())};
+    url:sheet.getUrl(),email,owner:email===owner,reportBook:sheet.getSheetByName('Monthly Report')?.getRange('A4').getDisplayValue()||primaryBookName_(sheet,books),books,accounts,...journalState_(sheet,accounts,null,books),today:date_(new Date())};
 }
 function lock_(action) {
   const lock=LockService.getScriptLock(); lock.waitLock(15000);

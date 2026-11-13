@@ -20,7 +20,7 @@
   <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/privacy.html">Privacy policy</a> · <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/terms.html">Terms of service</a></footer>
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
-<script src="google-client.js?v=3"></script>
+<script src="google-client.js?v=4"></script>
 <script src="demo.js"></script><script>
 
 'use strict';
@@ -91,12 +91,15 @@ function signOut(){
   loginScreen();
 }
 async function signIn(){
+  const version=++loadVersion;
   try{
     const request=ledgerGoogle.signIn();
     accessScreen('Signing in…');
     await request;
+    if(version!==loadVersion)return;
+    accessScreen('Opening your ledger…','Loading balances and recent entries.');
     await load();
-  }catch(error){loginScreen(error.message);}
+  }catch(error){if(version===loadVersion)loginScreen(error.message);}
 }
 async function reconnect() {
   const previous=data?.email;
@@ -113,13 +116,21 @@ async function load(initial){
   try{
     let next=initial;
     if(pages && !ledgerGoogle.authorized()){
-      if(!data)accessScreen('Opening your ledger…');
-      next=await ledgerGoogle.restore();
+      resetLedger();
+      accessScreen('Opening your ledger…');
+      let checking=true,loginError;
+      const loginReady=ledgerGoogle.prepare().then(()=>{
+        if(checking && version===loadVersion && !ledgerGoogle.authorized() && ledgerGoogle.configured())loginScreen();
+      }).catch(error=>{loginError=error;});
+      next=await ledgerGoogle.restore(()=>{
+        if(version===loadVersion)accessScreen('Opening your ledger…','Loading balances and recent entries.');
+      });
+      checking=false;
       if(version!==loadVersion)return;
       if(!next){
-        resetLedger();
-        await ledgerGoogle.prepare();
+        await loginReady;
         if(version!==loadVersion)return;
+        if(loginError)throw loginError;
         if(ledgerGoogle.configured())loginScreen();
         else accessScreen('Sign-in unavailable','The ledger’s Google connection has not been configured.',btn('Try again','load()'));
         return;
@@ -128,7 +139,7 @@ async function load(initial){
     next=next || await call('state');
     if(version!==loadVersion)return;
     if(next.loadError)throw Error(next.loadError);
-    if(pages){await ledgerGoogle.remember(next.email);if(version!==loadVersion)return;}
+    if(pages)ledgerGoogle.remember(next.email);
     if(next.connected===false){
       resetLedger();
       accessScreen('Set up your ledger','Choose the workbook for '+next.email+'. This choice is saved to your account.',

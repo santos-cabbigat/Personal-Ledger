@@ -8,7 +8,7 @@ const ledgerGoogle = (() => {
   let config, client, token = '', expiresAt = 0, loading, signingIn;
   // The saved account is only a hint. Google validates access on every workbook request.
   const accountKey='personal-ledger.remembered-account.v1';
-  let port,connecting,requestId=0,frame;
+  let port,connecting,requestId=0,frame,cancelHandshake,sessionVersion=0;
   const pending=new Map();
   function savedAccount(){
     try{return window.localStorage.getItem(accountKey)||'';}catch{return '';}
@@ -47,11 +47,17 @@ const ledgerGoogle = (() => {
     }
     pending.clear();
   }
+  function cancelRestore(){
+    ++sessionVersion;
+    if(cancelHandshake)cancelHandshake();
+    clearChannel();
+    workerAccount='';
+  }
   function forget(){
     token='';expiresAt=0;workerAccount='';
     workerRequest('clear');
     try{window.localStorage.removeItem(accountKey);}catch{}
-    clearChannel();
+    cancelRestore();
   }
   function belongsToFrame(source,outer) {
     try{
@@ -85,6 +91,7 @@ const ledgerGoogle = (() => {
       const finish=ok=>{
         if(finished)return;
         finished=true;
+        cancelHandshake=null;
         clearTimeout(timer);
         window.removeEventListener('message',receive);
         if(!ok){handshake?.close();clearChannel();}
@@ -106,29 +113,35 @@ const ledgerGoogle = (() => {
         event.source.postMessage({type:'ledger-connect',nonce},event.origin,[channel.port2]);
       }
       const timer=setTimeout(()=>finish(false),8000);
+      cancelHandshake=()=>finish(false);
       window.addEventListener('message',receive);
       frame.src=webApp+'?ledgerSession='+encodeURIComponent(nonce);
       document.body.append(frame);
     }).finally(()=>{connecting=null;});
     return connecting;
   }
-  async function restore(){
-    const expected=savedAccount();
+  async function restore(onSession=()=>{}){
+    const expected=savedAccount(),version=sessionVersion;
     if(!expected)return null;
-    if((await workerRequest('check',{account:expected}))?.result){
+    const active=await workerRequest('check',{account:expected});
+    if(version!==sessionVersion || savedAccount()!==expected)return null;
+    if(active?.result){
       workerAccount=expected;
+      onSession();
       try{
         const state=await call('state');
-        if(state?.email===expected && savedAccount()===expected)return state;
+        if(version===sessionVersion && state?.email===expected && savedAccount()===expected)return state;
       }catch{}
+      if(version!==sessionVersion)return null;
       workerAccount='';
     }
-    if(!await openChannel())return null;
+    if(!await openChannel() || version!==sessionVersion)return null;
+    onSession();
     try{
       const state=await channelCall('state',[]);
-      if(state?.email && state.email.toLowerCase()===expected.toLowerCase() && savedAccount()===expected)return state;
+      if(version===sessionVersion && state?.email && state.email.toLowerCase()===expected.toLowerCase() && savedAccount()===expected)return state;
     }catch{}
-    clearChannel();
+    if(version===sessionVersion)clearChannel();
     return null;
   }
   async function setup() {
@@ -157,14 +170,14 @@ const ledgerGoogle = (() => {
     return loading;
   }
   async function prepare() {
-    await setup();
-    if (configured()) await loadIdentity();
+    await Promise.all([setup(),loadIdentity()]);
   }
   function signIn() {
     if (signingIn) return signingIn;
     if (!configured() || !window.google?.accounts?.oauth2) {
       return Promise.reject(Error('Google sign-in is not ready. Refresh and try again.'));
     }
+    cancelRestore();
     signingIn = new Promise((resolve,reject) => {
       client = google.accounts.oauth2.initTokenClient({
         client_id: config.clientId, scope: scopes.join(' '),

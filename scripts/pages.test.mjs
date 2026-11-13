@@ -71,8 +71,8 @@ test('monthly spending nets posted expense lines within each book and links spli
   const modal = {addEventListener() {}};
   const context = vm.createContext({
     window: {addEventListener() {}}, location: {search: ''}, URLSearchParams,
-    document: {getElementById: () => modal, addEventListener() {}},
-    ledgerGoogle: {authorized: () => false, restore: () => new Promise(() => {})}
+    document: {getElementById: () => modal, addEventListener() {}, querySelectorAll: () => []},
+    ledgerGoogle: {authorized: () => false, prepare: () => new Promise(() => {}), restore: () => new Promise(() => {})}
   });
   vm.runInContext(app, context);
   const base = {id:'split',book:'Personal',code:'5100',name:'Food',type:'Expense',date:'2026-11-01',debit:0,credit:0};
@@ -149,4 +149,35 @@ test('other tabs can reuse a live grant only for its account, and sign-out clear
   assert.equal((await second('call',{account:'owner',method:'state',args:[]})).result,'loaded');
   await first('clear');
   assert.equal((await second('check',{account:'owner'})).expired,true);
+});
+
+test('the Google login button is usable while a saved-session check is still pending', async()=>{
+  const app=read('docs/index.html').match(/<script>([\s\S]*?)<\/script>/)[1];
+  const nodes=new Map();
+  const document={
+    addEventListener(){},querySelectorAll:()=>[],
+    getElementById(id){
+      if(!nodes.has(id))nodes.set(id,{addEventListener(){},open:false,value:''});
+      return nodes.get(id);
+    }
+  };
+  let finishRestore,finishLogin,signedIn=false,reads=0;
+  const google={
+    configured:()=>true,authorized:()=>signedIn,savedAccount:()=>'owner@example.com',
+    prepare:async()=>{},restore:()=>new Promise(resolve=>{finishRestore=resolve;}),
+    remember:async()=>{},signIn:()=>new Promise(resolve=>{finishLogin=()=>{signedIn=true;resolve();};}),
+    call:async()=>{reads++;return {connected:true,books:[],entries:[],title:'Verified ledger',email:'owner@example.com'};}
+  };
+  const page=vm.createContext({window:{addEventListener(){}},document,URLSearchParams,location:{search:''},ledgerGoogle:google});
+  vm.runInContext(app,page);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.match(nodes.get('accessActions').innerHTML,/Continue with Google/);
+  const selected=vm.runInContext('signIn()',page);
+  finishLogin();
+  await selected;
+  finishRestore(null);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(reads,1);
+  assert.equal(nodes.get('dashboard').hidden,false);
+  assert.equal(nodes.get('title').textContent,'Verified ledger');
 });
