@@ -1,0 +1,27 @@
+import {PGlite} from '@electric-sql/pglite';
+import fs from 'node:fs';
+const db=await PGlite.create();
+await db.exec("create role anon;create role authenticated;create schema auth;create table auth.users(id uuid,email text,email_confirmed_at timestamptz);create function auth.uid() returns uuid language sql as $$select '00000000-0000-0000-0000-000000000001'::uuid$$;insert into auth.users values(auth.uid(),'test@example.com',now());");
+await db.exec(fs.readFileSync(new URL('../supabase/personal-ledger.sql',import.meta.url),'utf8'));
+const proof='x'.repeat(64);
+await db.query("insert into ledger.settings(workbook,title,archive_key_hash) values('demo','Demo',encode(sha256(convert_to($1,'UTF8')),'hex'))",[proof]);
+const archive=async(a,v={})=>(await db.query("select public.personal_ledger_archive($1,$2,$3) as r",[a,proof,JSON.stringify(v)])).rows[0].r;
+const rpc=async(a,v={})=>(await db.query("select public.personal_ledger($1,$2) as r",[a,JSON.stringify(v)])).rows[0].r;
+const state={email:'test@example.com',owner:true,ledgerId:'demo',title:'Demo',reportBook:'Personal',books:['Personal'],accounts:[{code:'101',name:'Cash',type:'Asset',role:'Bank',use:'Posting'},{code:'502',name:'Food',type:'Expense',use:'Posting'}],entries:[]};
+await archive('import',state);
+const assert=(c,e)=>{if(!c)throw Error(e)};
+const payload=(date)=>({key:crypto.randomUUID(),date,ledgerId:'demo',book:'Personal',memo:'Expense',lines:[{code:'502',debit:'12.34'},{code:'101',credit:12.34}]});
+for(const date of ['2026-01-01','2026-01-01','2026-01-12']){const p=payload(date);const a=await rpc('postEntry',p);assert(a===await rpc('postEntry',p),'retry');}
+const scope={book:'Personal',account:'502',from:'2026-01-01',through:'2026-01-31'};
+assert((await rpc('preview',scope)).count===0,'cannot clean before archival');
+const batch=await archive('batch');await archive('confirm',batch);await archive('complete');
+const totals=async()=>{const rows=(await rpc('state')).entries;const result={};for(const r of rows){const key=r.date+r.code;const s=result[key]||=[0,0];s[0]+=Math.round(r.debit*100);s[1]+=Math.round(r.credit*100);}return JSON.stringify(Object.entries(result).sort())};
+const before=await totals(),preview=await rpc('preview',scope);
+const command={...scope,...preview,request:crypto.randomUUID()};const cleaned=await rpc('compact',command);
+assert(cleaned.summaries===2&&cleaned.count===3,'summary counts');
+assert((await rpc('compact',command)).count===3,'cleanup retry');
+assert(before===await totals(),'date/account totals');
+assert((await archive('batch')).length===0,'summary not double archived');
+assert((await rpc('status')).bytes>0,'usage');
+console.log('PASS: balanced posting, retry, archive receipt, date/account totals, atomic cleanup, repeat cleanup, database size');
+await db.close();

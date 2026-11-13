@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f1ecdf"><title>Personal &amp; Business Ledger</title>
-<link rel="stylesheet" href="ledger.css?v=2">
+<link rel="stylesheet" href="ledger.css?v=3">
 </head><body>
 <main>
   <header class="hero"><div class="brand"><div class="brandMark"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button id="settingsButton" hidden class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
@@ -20,7 +20,8 @@
   <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/privacy.html">Privacy policy</a> · <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/terms.html">Terms of service</a></footer>
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
-<script src="google-client.js?v=5"></script>
+<script src="vendor/supabase.js"></script>
+<script src="personal-db.js"></script>
 <script src="demo.js"></script><script>
 
 'use strict';
@@ -32,7 +33,7 @@ const preview = !inSheet && new URLSearchParams(location.search).get('preview')=
 const pages = !inSheet && !preview;
 const call = inSheet
   ? (method,...args)=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[method](...args))
-  : preview ? previewCall : ledgerGoogle.call;
+  : preview ? previewCall : ledgerDb.call;
 let data=null,draft=null,locked=false,lastReadAt=0;
 let refreshInProgress=false;
 document.addEventListener('visibilitychange',()=>{
@@ -81,88 +82,50 @@ function resetLedger(){
   document.title=el('title').textContent='Personal & Business Ledger';
   setView('Overview');
 }
-function loginScreen(message=''){
-  const account=ledgerGoogle.savedAccount();
-  accessScreen('Sign in',message||(account?'Continue with '+account+'.':'Use your Google account to open your ledger.'),
-    btn('Continue with Google','signIn()',true)+(account?btn('Use another account','signOut()'):''));
+function recoveryLink(error){
+  if(!/paused|unavailable|failed to fetch|network|offline|temporar/i.test(error.message))return '';
+  return '<p><a class="link" target="_blank" rel="noopener" href="https://supabase.com/dashboard/project/uyyihuvjbrbsombzzvqw">Open personal project to check or resume</a></p>';
 }
-function signOut(){
-  ++loadVersion;
-  ledgerGoogle.forget();
-  resetLedger();
-  loginScreen();
+let loginMode='login';
+function loginScreen(message='',mode='login'){
+  loginMode=mode;
+  const reset=mode==='reset',forgot=mode==='forgot',signup=mode==='signup';
+  const title=reset?'Choose a new password':forgot?'Reset password':signup?'Set up ledger login':'Sign in';
+  const email=reset?'':field('Email','<input id="loginEmail" type="email" autocomplete="username" required>');
+  const pass=forgot?'':field('Password','<input id="loginPassword" type="password" autocomplete="'+(reset||signup?'new-password':'current-password')+'" required>');
+  accessScreen(title,message||'Personal Ledger', '<form onsubmit="event.preventDefault();submitLogin()">'+email+pass+'<button class="primary" type="submit">'+(reset?'Save password':forgot?'Send reset email':signup?'Create login':'Sign in')+'</button></form>'+
+    (mode==='login'?btn('Forgot password', "loginScreen('', 'forgot')")+btn('Set up login', "loginScreen('', 'signup')"):btn('Back to sign in','loginScreen()')));
+  document.body.classList.add('loginPage');
 }
-async function signIn(){
-  const version=++loadVersion;
+async function submitLogin(){
+  const email=el('loginEmail')?.value.trim(),password=el('loginPassword')?.value,mode=loginMode;
+  const button=el('accessActions').querySelector('button[type=submit]');
+  button.disabled=true;el('accessMessage').textContent='Please wait…';
   try{
-    const request=ledgerGoogle.signIn();
-    accessScreen('Signing in…');
-    await request;
-    if(version!==loadVersion)return;
-    accessScreen('Opening your ledger…','Loading balances and recent entries.');
+    if(mode==='forgot'){await ledgerDb.forgot(email);loginScreen('Check your inbox for a password reset link.');return;}
+    if(mode==='reset'){await ledgerDb.password(password);history.replaceState(null,'',location.pathname);}
+    else if(mode==='signup'){const result=await ledgerDb.signup(email,password);if(!result.session){loginScreen('Check your email to confirm your ledger login.');return;}}
+    else await ledgerDb.signIn(email,password);
     await load();
-  }catch(error){if(version===loadVersion)loginScreen(error.message);}
+  }catch(e){el('accessMessage').textContent=e.message;const link=recoveryLink(e);if(link&&!el('accessActions').querySelector('a'))el('accessActions').insertAdjacentHTML('beforeend',link);}finally{button.disabled=false;}
 }
-async function reconnect() {
-  const previous=data?.email;
-  try {
-    await ledgerGoogle.signIn();
-    const next=await call('state');
-    if(next.email!==previous){resetLedger();await load(next);return;}
-    el('err').textContent='Signed in. You can retry saving.';
-  }catch(error){el('err').textContent=error.message;}
-}
+async function signOut(){++loadVersion;await ledgerDb.signOut();resetLedger();loginScreen();}
+async function reconnect(){resetLedger();loginScreen();}
 async function load(initial,fresh=false){
   const version=++loadVersion;
   refreshInProgress=true;
   if(data)el('status').textContent='Refreshing…';
   try{
-    let next=initial;
-    if(pages && !ledgerGoogle.authorized()){
-      resetLedger();
-      accessScreen('Opening your ledger…');
-      let checking=true,loginError;
-      const loginReady=ledgerGoogle.prepare().then(()=>{
-        if(checking && version===loadVersion && !ledgerGoogle.authorized() && ledgerGoogle.configured())loginScreen();
-      }).catch(error=>{loginError=error;});
-      next=await ledgerGoogle.restore(summary=>{
-        if(version!==loadVersion)return;
-        if(summary){
-          el('access').hidden=true;
-          el('dashboard').hidden=false;
-          el('ledgerNav').inert=true;
-          el('tools').hidden=true;
-          el('title').textContent=summary.title;
-          el('status').textContent='Updating from Google Sheets…';
-          el('homeData').innerHTML=balanceCards(summary.income,summary.expenses,'All books');
-          return;
-        }
-        accessScreen('Opening your ledger…','Loading balances and recent entries.');
-      });
-      checking=false;
-      if(version!==loadVersion)return;
-      if(!next){
-        await loginReady;
-        if(version!==loadVersion)return;
-        if(loginError)throw loginError;
-        if(ledgerGoogle.configured())loginScreen();
-        else accessScreen('Sign-in unavailable','The ledger’s Google connection has not been configured.',btn('Try again','load()'));
-        return;
-      }
+    if(pages){
+      const session=await ledgerDb.session();if(version!==loadVersion)return;
+      if(!session){resetLedger();loginScreen();return;}
+      if(new URLSearchParams(location.search).get('reset')==='1'){loginScreen('Enter a new password.','reset');return;}
+      document.body.classList.remove('loginPage');
     }
-    next=next || (fresh?await call('state',true):await call('state'));
+    const next=initial || await call('state');
     if(version!==loadVersion)return;
     if(next.loadError)throw Error(next.loadError);
-    if(pages){
-      const summary=next.connected===false?null:{title:next.title,income:-net(next.entries,'Income'),expenses:net(next.entries,'Expense')};
-      ledgerGoogle.remember(next.email,summary);
-    }
-    if(next.connected===false){
-      resetLedger();
-      accessScreen('Set up your ledger','Choose the workbook for '+next.email+'. This choice is saved to your account.',
-        connectButtons()+(pages?btn('Sign out','signOut()'):''));
-      return;
-    }
+    if(next.connected===false){accessScreen('Open your ledger','Choose your workbook.',connectButtons());return;}
     const selected=el('scope').value;
     data=next;
     lastReadAt=Date.now();
@@ -185,11 +148,8 @@ async function load(initial,fresh=false){
     else changeScope();
   }catch(e){
     if(version!==loadVersion)return;
-    if(pages && !ledgerGoogle.authorized() && ledgerGoogle.configured()){
-      resetLedger();loginScreen(e.message);return;
-    }
     if(!data){
-      accessScreen('Couldn’t open your ledger',e.message,btn('Try again','load()',true)+(pages?btn('Sign out','signOut()'):''));
+      accessScreen('Couldn’t open your ledger',e.message,btn('Try again','load()',true)+(pages?btn('Sign out','signOut()')+recoveryLink(e):''));
       return;
     }
     el('status').textContent=(data?'Refresh failed. Showing the last loaded entries. ':'Could not read the ledger. ')+e.message;
@@ -250,7 +210,7 @@ function home(){
 function detail(index){
   const row=data.entries[index],lines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
   dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,displayDate(row.date)].filter(Boolean).join(' · '))+'</p>'+
-    ledgerTable(lines)+'<p class="sub">'+esc(row.by?'Posted by '+row.by:'Entered in Google Sheets')+'<br>'+esc(row.id)+'</p>'+btn(row.sheetDraft?'Review & post sheet entry':'Edit entry','editEntry('+index+')',true));
+    ledgerTable(lines)+'<p class="sub">'+esc(row.by?'Posted by '+row.by:'Entered in Google Sheets')+'<br>'+esc(row.id)+'</p>'+(row.summary?'<p>Original entries are in Ledger Archive in your Google Sheet.</p>':btn(row.sheetDraft?'Review & post sheet entry':'Edit entry','editEntry('+index+')',true)));
 }
 function editEntry(index){
   const row=data.entries[index];
@@ -340,7 +300,7 @@ function newAccount(){
 }
 function parents(){el('parent').innerHTML='<option value="">No parent</option>'+acOptions(chartFor(el('accountBook').value).filter(a=>a.type===el('classify').value&&a.use==='Group'));el('role').disabled=el('classify').value!=='Asset'||el('use').value!=='Posting';if(el('role').disabled)el('role').value=''}
 async function write(method,args,after){if(locked)return;locked=true;el('err').textContent='Saving…';let result;try{result=await call(method,...args)}catch(e){el('err').textContent=e.message;locked=false;
-    if(pages&&!ledgerGoogle.authorized())el('err').insertAdjacentHTML('beforeend',' '+btn('Reconnect','reconnect()'));
+    if(pages&&/session expired|invalid jwt/i.test(e.message))el('err').insertAdjacentHTML('beforeend',' '+btn('Sign in','reconnect()'));
     return}locked=false;el('modal').close();await load(null,true);if(after&&data)after(result)}
 function addAccount(){const book=el('accountBook').value;write('saveAccount',[{ledgerId:data.ledgerId,book,role:el('role').value,code:el('code').value,name:el('accountName').value,type:el('classify').value,parent:el('parent').value,use:el('use').value}],()=>accountsView(book))}
 function entryForm(keep=false){
@@ -443,7 +403,7 @@ function reportData(){
     for(const book of data.books.filter(b=>!chosen||b===chosen))
       for(const account of chartFor(book).filter(a=>a.use==='Posting'))
         for(const line of rows.filter(r=>r.book===book&&r.code===account.code).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id))){
-          records.push([account.code,account.name,displayDate(line.date),book,line.lineMemo||line.memo,line.reference||'',line.debit,line.credit,line.sheetDraft?'Balanced draft':'Posted']);
+          records.push([account.code,account.name,displayDate(line.date),book,line.lineMemo||line.memo,line.reference||'',line.debit,line.credit,line.summary?'Archived summary':line.sheetDraft?'Balanced draft':'Posted']);
         }
   }else{
     headers=['Book','Code','Account','Debit (LAK)','Credit (LAK)'];moneyColumns=[3,4];
@@ -539,9 +499,10 @@ function monthlyReport(book,month,clean=false,basis){
   }
   const metric=(label,value)=>'<div><small>'+esc(label)+'</small><b>'+esc(amount(value))+'</b></div>';
   const periodLabel=new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01T00:00:00Z'));
-  const postedCount=new Set(inMonth.filter(r=>!r.sheetDraft).map(r=>r.id)).size,pending=new Set(entries.filter(r=>r.sheetDraft&&period(r)).map(r=>r.id)).size;
+  const postedCount=groupEntries(inMonth.filter(r=>!r.sheetDraft)).reduce((total,[row])=>total+(row.entryCount||1),0),pending=new Set(entries.filter(r=>r.sheetDraft&&period(r)).map(r=>r.id)).size;
   const latest=inMonth.reduce((max,r)=>r.date>max?r.date:max,'');
   const openingFunds=groupEntries(inMonth).reduce((total,lines)=>{
+    if(lines[0].summary)return total+Number(lines[0].openingAmount||0);
     const bankLines=lines.filter(l=>accountMap.get(l.code)?.role==='Bank');
     const other=lines.filter(l=>accountMap.get(l.code)?.role!=='Bank');
     if(!bankLines.length||!other.length||!other.every(l=>l.type==='Equity'&&/opening balance|beginning balance/i.test(l.name)))return total;
@@ -585,13 +546,46 @@ function saveBookTypeFromForm(){
   if(!name){el('err').textContent='Enter a book name.';return;}
   write('saveBookType',[name,data.ledgerId],settings);
 }
+async function dbSettings(){
+  dialog('Settings',field('App name','<input id="appName" maxlength="60" value="'+esc(data.title)+'">')+
+    (data.owner?btn('Save name','saveName()')+bookSettings():'')+
+    '<section><h3>Supabase status</h3><div id="dbUsage" role="status">Checking…</div></section>'+
+    (data.owner?btn('Manage archived entries','cleanupForm()'):'')+
+    '<p><a class="link" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener">Open Google Sheet archive</a></p><p>'+esc(data.email)+'</p>'+btn('Sign out','signOut()'));
+  const target=el('dbUsage');try{
+    const result=await call('status'),pct=result.bytes/result.limitBytes*100;
+    const level=pct>=75?'Red warning':pct>=60?'Warning':'Healthy';
+    target.innerHTML='<strong class="'+(pct>=75?'usageRed':pct>=60?'usageAmber':'')+'">'+level+' · '+pct.toFixed(1)+'% used</strong><p>'+Math.round(result.bytes/1048576)+' of '+Math.round(result.limitBytes/1048576)+' MiB database space</p><p>Last verified archive: '+esc(result.lastArchive?new Date(result.lastArchive).toLocaleString():'Awaiting first archive')+'<br>Revisions waiting: '+esc(result.pending)+'</p>';
+  }catch(e){target.innerHTML=esc(e.message)+recoveryLink(e);}
+}
+function cleanupForm(){
+  dialog('Manage archived entries',field('Book','<select id="cleanBook" onchange="cleanupAccounts()">'+options(data.books,el('scope').value)+'</select>')+
+    field('Account','<select id="cleanAccount"></select>')+'<div class="two">'+field('From','<input id="cleanFrom" type="date" required>')+
+    field('Through','<input id="cleanTo" type="date" required>')+'</div><p>Only verified, archived entries can be summarized. Selecting an account includes both sides of every matching entry.</p>'+
+    btn('Preview range','previewCleanup()',true));cleanupAccounts();
+}
+function cleanupAccounts(){
+  el('cleanAccount').innerHTML='<option value="">All accounts</option>'+acOptions(chartFor(el('cleanBook').value).filter(a=>a.use==='Posting'),'');
+}
+let cleanupRequest;
+async function previewCleanup(){
+  const p={book:el('cleanBook').value,account:el('cleanAccount').value,from:el('cleanFrom').value,through:el('cleanTo').value};
+  try{
+    if(!p.from||!p.through||p.from>p.through)throw Error('Choose a valid date range.');
+    const result=await call('preview',p);
+    cleanupRequest={...p,fingerprint:result.fingerprint,request:crypto.randomUUID()};
+    dialog('Review archived range','<p>'+esc(p.book)+' · '+esc(p.account||'All accounts')+' · '+esc(p.from)+' through '+esc(p.through)+'</p>'+
+      '<p><strong>'+esc(result.count)+' complete journal entries</strong> eligible. '+esc(result.pending)+' pending or draft entries will stay in the database.</p>'+
+      '<p>Each posting date keeps its original debit and credit totals by account. Full detail stays in Google Sheets.</p>'+
+      btn('Back','cleanupForm()')+(result.count?btn('Replace detail with summaries','applyCleanup()',true):''));
+  }catch(e){el('err').textContent=e.message;}
+}
+function applyCleanup(){if(cleanupRequest)write('compact',[cleanupRequest],dbSettings);}
 function sheetSettings(){if(!ready())return;dialog('Settings',(data.owner?field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()'):'<b>'+esc(data.title)+'</b>')+bookSettings()+'<p><a class="link" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx">Download all data (Excel)</a></p>'+connectButtons()+'<p class="sub">Signed in as '+esc(data.email)+'</p>'+(pages?btn('Sign out','signOut()'):'')+'<a class="link" href="'+esc(data.url)+'" target="_blank" rel="noopener">Open Google Sheet</a>'+(data.owner?'<p>To add another person, open the Sheet, tap Share, and invite their Google account as an editor.</p>':''))}
-function settings(){if(!ready())return;if(!preview)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+bookSettings()+'<p class="sub">Preview changes last until you reload this page.</p>')}
+function settings(){if(!ready())return;if(pages)return dbSettings();if(!preview)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+bookSettings()+'<p class="sub">Preview changes last until you reload this page.</p>')}
 function saveName(){write('renameLedger',[el('appName').value,data.ledgerId])}
 if(pages)window.addEventListener('storage',event=>{
-  if(event.key==='personal-ledger.remembered-account.v1' && data && event.newValue!==data.email){
-    location.reload();
-  }
+  if(event.key==='personal-ledger.auth.v1' && !event.newValue){++loadVersion;resetLedger();loginScreen();}
 });
 const serverLedger = null;
 const showMonthOnOpen = false;

@@ -4,61 +4,6 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
-const clientSource = read('docs/google-client.js');
-const manifest = JSON.parse(read('apps-script/appsscript.json'));
-
-function simulate(config, response) {
-  const calls = [];
-  const google = {accounts: {oauth2: {
-    initTokenClient(options) {
-      assert.deepEqual(options.scope.split(' ').sort(), [...manifest.oauthScopes].sort());
-      return {requestAccessToken() {options.callback({access_token: 'sample', expires_in: 3600});}};
-    },
-    hasGrantedAllScopes() {return true;}
-  }}};
-  const fetch = async (url, options) => {
-    if (url === './google-config.json') return {ok: true, json: async () => config};
-    calls.push({url,options});
-    return response;
-  };
-  const client = vm.runInNewContext(clientSource+'\nledgerGoogle', {fetch, window: {google}, google});
-  return {client,calls};
-}
-
-test('unconfigured Pages never opens sample books as live data or calls the posting service', async () => {
-  const {client,calls} = simulate({clientId: '',deploymentId: ''});
-  await client.prepare();
-  assert.equal(client.configured(),false);
-  await assert.rejects(client.call('state'),/Sign in/);
-  assert.equal(calls.length,0);
-  const html = read('docs/index.html');
-  assert.doesNotMatch(html,/location\.replace\(/);
-  assert.match(html,/get\('preview'\)==='1'/);
-});
-
-test('live posts keep the request ID and use the existing Apps Script function', async () => {
-  const {client,calls} = simulate({clientId:'public-id',deploymentId:'sample-deployment'},{
-    ok:true,status:200,json:async()=>({done:true,response:{result:'entry-id'}})
-  });
-  await client.prepare();
-  await client.signIn();
-  assert.equal(await client.call('postEntry',{key:'request-id'}),'entry-id');
-  assert.equal(calls.length,1);
-  assert.equal(calls[0].url,'https://script.googleapis.com/v1/scripts/sample-deployment:run');
-  assert.deepEqual(JSON.parse(calls[0].options.body),{function:'postEntry',parameters:[{key:'request-id'}],devMode:false});
-  assert.equal(calls[0].options.headers.Authorization,'Bearer sample');
-});
-
-test('expired access stops subsequent calls and never replays a write automatically', async () => {
-  const {client,calls} = simulate({clientId:'public-id',deploymentId:'example'},{status:401});
-  await client.prepare();
-  await client.signIn();
-  await assert.rejects(client.call('postEntry',{key:'original'}),/expired/);
-  assert.equal(client.authorized(),false);
-  await assert.rejects(client.call('postEntry',{key:'original'}),/Sign in/);
-  assert.equal(calls.length,1);
-});
-
 test('generated sidebar includes the theme and has no external Pages dependencies', () => {
   const bound = read('apps-script/Index.html');
   assert.ok(bound.includes(read('docs/ledger.css')));
@@ -72,7 +17,7 @@ test('monthly spending nets posted expense lines within each book and links spli
   const context = vm.createContext({
     window: {addEventListener() {}}, location: {search: ''}, URLSearchParams,
     document: {getElementById: () => modal, addEventListener() {}, querySelectorAll: () => []},
-    ledgerGoogle: {authorized: () => false, prepare: () => new Promise(() => {}), restore: () => new Promise(() => {})}
+    ledgerDb: {call() {}, session: () => new Promise(() => {})}
   });
   vm.runInContext(app, context);
   const base = {id:'split',book:'Personal',code:'5100',name:'Food',type:'Expense',date:'2026-11-01',debit:0,credit:0};
@@ -93,21 +38,6 @@ test('monthly spending nets posted expense lines within each book and links spli
   assert.equal(report('2026-11','Personal').totalCents,13042);
   assert.equal(report('2026-10','Personal').totalCents,15000);
   assert.equal(report('2026-10','Business').accounts.length,0);
-});
-
-test('remembered email alone never authorizes Google access and is removed on sign-out', async () => {
-  const saved=new Map();
-  const localStorage={
-    getItem:key=>saved.get(key), setItem:(key,value)=>saved.set(key,value), removeItem:key=>saved.delete(key)
-  };
-  const client=vm.runInNewContext(clientSource+'\nledgerGoogle',{window:{localStorage}});
-  assert.equal(await client.restore(),null);
-  client.remember('owner@example.com');
-  assert.deepEqual([...saved.values()],['owner@example.com']);
-  assert.equal(client.authorized(),false);
-  client.forget();
-  assert.equal(saved.size,0);
-  assert.equal(await client.restore(),null);
 });
 
 test('session handoff accepts only the expected Pages window, nonce and ledger methods', () => {
@@ -158,33 +88,47 @@ test('other tabs can reuse a live grant only for its account, and sign-out clear
   assert.equal((await second('check',{account:'owner'})).expired,true);
 });
 
-test('the Google login button is usable while a saved-session check is still pending', async()=>{
-  const app=read('docs/index.html').match(/<script>([\s\S]*?)<\/script>/)[1];
+
+test('Pages restores a persistent Supabase session and uses the personal database for posting', async () => {
+  const calls = [];
+  const session = {user:{id:'test-owner'}};
+  const client = {
+    auth: {getSession: async () => ({data:{session}})},
+    rpc: async (name, payload) => {
+      calls.push({name, payload});
+      return {data:'entry-id'};
+    }
+  };
+  const supabase = {createClient(url, key, options) {
+    assert.equal(new URL(url).hostname, 'uyyihuvjbrbsombzzvqw.supabase.co');
+    assert.match(key, /^sb_publishable_/);
+    assert.equal(options.auth.persistSession, true);
+    return client;
+  }};
+  const db = vm.runInNewContext(read('docs/personal-db.js')+'\nledgerDb', {supabase});
+  assert.equal(await db.session(), session);
+  const post = {key:'original-request', book:'Personal'};
+  assert.equal(await db.call('postEntry', post), 'entry-id');
+  assert.equal(calls[0].name, 'personal_ledger');
+  assert.equal(calls[0].payload.p, post);
+});
+
+test('sign-in accepts email and password and reads no financial records before authentication', async () => {
   const nodes=new Map();
-  const document={
-    addEventListener(){},querySelectorAll:()=>[],
+  const document={body:{classList:{add(){},remove(){}}},addEventListener(){},querySelectorAll:()=>[],
     getElementById(id){
-      if(!nodes.has(id))nodes.set(id,{addEventListener(){},open:false,value:''});
+      if(!nodes.has(id)) nodes.set(id,{addEventListener(){},open:false,value:''});
       return nodes.get(id);
     }
   };
-  let finishRestore,finishLogin,signedIn=false,reads=0;
-  const google={
-    configured:()=>true,authorized:()=>signedIn,savedAccount:()=>'owner@example.com',
-    prepare:async()=>{},restore:()=>new Promise(resolve=>{finishRestore=resolve;}),
-    remember:async()=>{},signIn:()=>new Promise(resolve=>{finishLogin=()=>{signedIn=true;resolve();};}),
-    call:async()=>{reads++;return {connected:true,books:[],entries:[],title:'Verified ledger',email:'owner@example.com'};}
-  };
-  const page=vm.createContext({window:{addEventListener(){}},document,URLSearchParams,location:{search:''},ledgerGoogle:google});
+  let reads=0;
+  const page=vm.createContext({window:{addEventListener(){}},document,URLSearchParams,location:{search:''},
+    ledgerDb:{session:async()=>null,call:async()=>{reads++;}}});
+  const app=read('docs/index.html').match(/<script>([\s\S]*?)<\/script>/)[1];
   vm.runInContext(app,page);
   await new Promise(resolve=>setImmediate(resolve));
-  assert.match(nodes.get('accessActions').innerHTML,/Continue with Google/);
-  const selected=vm.runInContext('signIn()',page);
-  finishLogin();
-  await selected;
-  finishRestore(null);
-  await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(reads,1);
-  assert.equal(nodes.get('dashboard').hidden,false);
-  assert.equal(nodes.get('title').textContent,'Verified ledger');
+  assert.equal(reads,0);
+  assert.equal(nodes.get('dashboard').hidden,true);
+  assert.match(nodes.get('accessActions').innerHTML,/type="password"/);
+  assert.match(nodes.get('accessActions').innerHTML,/Set up login/);
 });

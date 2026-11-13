@@ -1,0 +1,6 @@
+{
+  "name": "personal-business-ledger",
+  "private": true,
+  "scripts": {"test": "node --test scripts/*.test.mjs && node scripts/database-check.mjs"},
+  "devDependencies": {"@electric-sql/pglite": "0.3.14"}
+}
