@@ -7,8 +7,8 @@ const reporting=await read('apps-script/Reporting.gs');
 const session=await read('apps-script/Session.gs');
 const manifest=await read('apps-script/appsscript.json');
 const css=await read('docs/ledger.css');
-const live=source.replace('<link rel="stylesheet" href="ledger.css">',()=>'<style>'+css+'</style>')
-  .replace('<script src="google-client.js"></script>','')
+const live=source.replace(/<link rel="stylesheet" href="ledger\.css(?:\?[^"]*)?">/,()=>'<style>'+css+'</style>')
+  .replace(/<script src="google-client\.js(?:\?[^"]*)?"><\/script>/,'')
   .replace('<script src="demo.js"></script>','');
 await write('apps-script/Index.html',live);
 const demoPath='docs/demo.js';
