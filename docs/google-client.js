@@ -19,7 +19,7 @@ const ledgerGoogle = (() => {
     if(!window.SharedWorker)return Promise.resolve(null);
     try{
       if(!workerPort){
-        const worker=new window.SharedWorker('./session-worker.js','personal-ledger-v1');
+        const worker=new window.SharedWorker('./session-worker.js?v=2','personal-ledger-v2');
         workerPort=worker.port;
         workerPort.onmessage=({data})=>{
           const done=workerRequests.get(data.id);
@@ -33,10 +33,11 @@ const ledgerGoogle = (() => {
       });
     }catch{return Promise.resolve(null);}
   }
-  async function remember(email){
+  async function remember(email,summary){
     if(!email)return;
     try{window.localStorage.setItem(accountKey,email);}catch{}
-    if(token && config && expiresAt>Date.now()+30000)await workerRequest('save',{account:email,token,expiresAt,deployment:config.deploymentId});
+    if(token && config && expiresAt>Date.now()+30000)await workerRequest('save',{account:email,token,expiresAt,deployment:config.deploymentId,summary});
+    else if(workerAccount===email)await workerRequest('summary',{account:email,summary});
   }
   function clearChannel(){
     port?.close();port=null;
@@ -127,7 +128,7 @@ const ledgerGoogle = (() => {
     if(version!==sessionVersion || savedAccount()!==expected)return null;
     if(active?.result){
       workerAccount=expected;
-      onSession();
+      onSession(active.summary);
       try{
         const state=await call('state');
         if(version===sessionVersion && state?.email===expected && savedAccount()===expected)return state;
@@ -211,6 +212,7 @@ const ledgerGoogle = (() => {
     }
     if(port)return channelCall(method,parameters);
     if (!authorized()) throw Error('Sign in to Google again to continue.');
+    if(method!=='state')workerRequest('invalidate',{account:savedAccount()});
     const id = encodeURIComponent(config.deploymentId);
     const response = await fetch('https://script.googleapis.com/v1/scripts/' + id + ':run', {
       method: 'POST', cache: 'no-store',

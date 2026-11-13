@@ -1,6 +1,10 @@
 'use strict';
 // A browser-managed worker can serve other open ledger tabs without exposing the grant to them.
 let session;
+function recentTotals(summary){
+  if(typeof summary?.title!=='string' || !Number.isFinite(summary.income) || !Number.isFinite(summary.expenses))return null;
+  return {title:summary.title,income:summary.income,expenses:summary.expenses,readAt:Date.now()};
+}
 const readsAndWrites=new Set(['state','openExistingLedger','connectPersonalDrive','saveAccount','postEntry','renameLedger','saveBookType']);
 self.onconnect=({ports:[port]})=>{
   port.onmessage=async ({data})=>{
@@ -10,15 +14,24 @@ self.onconnect=({ports:[port]})=>{
       if(action==='save'){
         const {account,token,expiresAt,deployment}=data;
         if(!account || !token || !/^[\w-]+$/.test(deployment) || !Number.isFinite(expiresAt))throw Error('Invalid session.');
-        session={account,token,expiresAt,deployment};
+        session={account,token,expiresAt,deployment,summary:recentTotals(data.summary)};
         port.postMessage({id,result:true});return;
       }
       const active=session;
       if(!active || active.expiresAt<=Date.now()+30000 || data.account!==active.account){
         port.postMessage({id,expired:true});return;
       }
-      if(action==='check'){port.postMessage({id,result:true});return;}
+      if(action==='check'){
+        const summary=active.summary;
+        port.postMessage({id,result:true,summary:summary && Date.now()-summary.readAt<300000?summary:null});
+        return;
+      }
+      if(action==='summary' || action==='invalidate'){
+        active.summary=action==='summary'?recentTotals(data.summary):null;
+        port.postMessage({id,result:true});return;
+      }
       if(action!=='call' || !readsAndWrites.has(data.method) || !Array.isArray(data.args))throw Error('Invalid ledger request.');
+      if(data.method!=='state')active.summary=null;
       const response=await fetch('https://script.googleapis.com/v1/scripts/'+active.deployment+':run',{
         method:'POST',cache:'no-store',credentials:'omit',
         headers:{Authorization:'Bearer '+active.token,'Content-Type':'application/json'},

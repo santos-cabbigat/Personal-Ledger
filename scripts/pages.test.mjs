@@ -135,7 +135,8 @@ test('session handoff accepts only the expected Pages window, nonce and ledger m
 
 test('other tabs can reuse a live grant only for its account, and sign-out clears the grant',async()=>{
   const worker={};
-  vm.runInNewContext(read('docs/session-worker.js'),{self:worker,fetch:async()=>({ok:true,json:async()=>({done:true,response:{result:'loaded'}})})});
+  let now=Date.now();
+  vm.runInNewContext(read('docs/session-worker.js'),{Date:{now:()=>now},self:worker,fetch:async()=>({ok:true,json:async()=>({done:true,response:{result:'loaded'}})})});
   function openTab(){
     let last;
     const port={postMessage:reply=>{last=reply;}};
@@ -143,7 +144,13 @@ test('other tabs can reuse a live grant only for its account, and sign-out clear
     return async(action,values={})=>{await port.onmessage({data:{id:1,action,...values}});return last;};
   }
   const first=openTab(),second=openTab();
-  await first('save',{account:'owner',token:'sample',expiresAt:Date.now()+3600000,deployment:'example'});
+  await first('save',{account:'owner',token:'sample',expiresAt:now+3600000,deployment:'example',summary:{title:'Personal',income:55,expenses:8,entries:['private']}});
+  const cached=(await second('check',{account:'owner'})).summary;
+  assert.equal(cached.expenses,8);
+  assert.equal(cached.entries,undefined);
+  assert.equal((await second('check',{account:'other'})).summary,undefined);
+  now+=300001;
+  assert.equal((await second('check',{account:'owner'})).summary,null);
   assert.equal((await second('check',{account:'owner'})).result,true);
   assert.equal((await second('check',{account:'other'})).expired,true);
   assert.equal((await second('call',{account:'owner',method:'state',args:[]})).result,'loaded');

@@ -239,6 +239,7 @@ function changeScope() {
 }
 function accessScreen(title,message='',actions=''){
   el('dashboard').hidden=true;
+  el('dashboard').inert=false;
   el('settingsButton').hidden=true;
   el('access').hidden=false;
   el('accessTitle').textContent=title;
@@ -296,8 +297,19 @@ async function load(initial){
       const loginReady=ledgerGoogle.prepare().then(()=>{
         if(checking && version===loadVersion && !ledgerGoogle.authorized() && ledgerGoogle.configured())loginScreen();
       }).catch(error=>{loginError=error;});
-      next=await ledgerGoogle.restore(()=>{
-        if(version===loadVersion)accessScreen('Opening your ledger…','Loading balances and recent entries.');
+      next=await ledgerGoogle.restore(summary=>{
+        if(version!==loadVersion)return;
+        if(summary){
+          el('access').hidden=true;
+          el('dashboard').hidden=false;
+          el('dashboard').inert=true;
+          el('tools').hidden=true;
+          el('title').textContent=summary.title;
+          el('status').textContent='Updating from Google Sheets…';
+          el('homeData').innerHTML=balanceCards(summary.income,summary.expenses,'All books');
+          return;
+        }
+        accessScreen('Opening your ledger…','Loading balances and recent entries.');
       });
       checking=false;
       if(version!==loadVersion)return;
@@ -313,7 +325,10 @@ async function load(initial){
     next=next || await call('state');
     if(version!==loadVersion)return;
     if(next.loadError)throw Error(next.loadError);
-    if(pages)ledgerGoogle.remember(next.email);
+    if(pages){
+      const summary=next.connected===false?null:{title:next.title,income:-net(next.entries,'Income'),expenses:net(next.entries,'Expense')};
+      ledgerGoogle.remember(next.email,summary);
+    }
     if(next.connected===false){
       resetLedger();
       accessScreen('Set up your ledger','Choose the workbook for '+next.email+'. This choice is saved to your account.',
@@ -324,6 +339,7 @@ async function load(initial){
     data=next;
     el('access').hidden=true;
     el('dashboard').hidden=false;
+    el('dashboard').inert=false;
     el('settingsButton').hidden=false;
     el('tools').hidden=false;
     const books=[...new Set([...data.books,...data.entries.map(row=>row.book)])];
@@ -392,12 +408,14 @@ function entryList(groups){
   }).join('')||'<p class="empty">No entries for this selection.</p>';
 }
 function net(rows,type){return rows.filter(r=>r.type===type).reduce((s,r)=>s+Math.round(r.debit*100)-Math.round(r.credit*100),0)/100}
+function balanceCards(income,expense,book){
+  return '<div class="overviewGrid"><section class="panel balance"><div class="balanceLabel"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v3M3 8h17v12H5a2 2 0 0 1-2-2zm17 4h-5v4h5"/></svg> Net income</div><div class="kpi">'+amount(income-expense)+'</div><small>'+esc(book)+' · All dates</small></section>'+
+    '<section class="panel totals"><div class="summaryLine"><span>Income</span><strong>'+amount(income)+'</strong></div><div class="summaryLine"><span>Expenses</span><strong>'+amount(expense)+'</strong></div></section></div>';
+}
 function home(){
   if(!data)return;
   const rows=filtered(),income=-net(rows,'Income'),expense=net(rows,'Expense');
-  el('homeData').innerHTML=sheetWarnings()+
-    '<div class="overviewGrid"><section class="panel balance"><div class="balanceLabel"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h13v3M3 8h17v12H5a2 2 0 0 1-2-2zm17 4h-5v4h5"/></svg> Net income</div><div class="kpi">'+amount(income-expense)+'</div><small>'+esc(el('scope').value||'All books')+' · All dates</small></section>'+
-    '<section class="panel totals"><div class="summaryLine"><span>Income</span><strong>'+amount(income)+'</strong></div><div class="summaryLine"><span>Expenses</span><strong>'+amount(expense)+'</strong></div></section></div>'+
+  el('homeData').innerHTML=sheetWarnings()+balanceCards(income,expense,el('scope').value||'All books')+
     '<section class="entryPanel"><div class="sectionHead compact"><h3>Recent entries</h3><button class="textButton" onclick="journals()">View journal →</button></div>'+entryList(groupEntries(rows).slice(0,5))+'</section>';
 }
 function detail(index){
