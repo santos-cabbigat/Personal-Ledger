@@ -1,5 +1,6 @@
 import {PGlite} from '@electric-sql/pglite';
 import fs from 'node:fs';
+import {strict as verify} from 'node:assert';
 const db=await PGlite.create();
 await db.exec("create role anon;create role authenticated;create schema auth;create table auth.users(id uuid,email text,email_confirmed_at timestamptz);create function auth.uid() returns uuid language sql as $$select '00000000-0000-0000-0000-000000000001'::uuid$$;insert into auth.users values(auth.uid(),'test@example.com',now());");
 await db.exec(fs.readFileSync(new URL('../supabase/personal-ledger.sql',import.meta.url),'utf8'));
@@ -8,15 +9,27 @@ await db.query("insert into ledger.settings(workbook,title,archive_key_hash) val
 const archive=async(a,v={})=>(await db.query("select public.personal_ledger_archive($1,$2,$3) as r",[a,proof,JSON.stringify(v)])).rows[0].r;
 const rpc=async(a,v={})=>(await db.query("select public.personal_ledger($1,$2) as r",[a,JSON.stringify(v)])).rows[0].r;
 const state={email:'test@example.com',owner:true,ledgerId:'demo',title:'Demo',reportBook:'Personal',books:['Personal'],accounts:[{code:'101',name:'Cash',type:'Asset',role:'Bank',use:'Posting'},{code:'502',name:'Food',type:'Expense',use:'Posting'}],entries:[]};
+await verify.rejects(rpc('state'),/access/);
+await verify.rejects(db.query('select public.personal_ledger_archive($1,$2,$3)', ['batch','incorrect credential','{}']),/unauthorized/);
 await archive('import',state);
+await db.exec("set role anon");
+await verify.rejects(rpc('state'),/permission denied/);
+await db.exec("reset role;set role authenticated");
+await verify.rejects(db.query('select * from ledger.entries'),/permission denied/);
+await verify.rejects(archive('batch'),/permission denied/);
+await db.exec("reset role");
 const assert=(c,e)=>{if(!c)throw Error(e)};
 const payload=(date)=>({key:crypto.randomUUID(),date,ledgerId:'demo',book:'Personal',memo:'Expense',lines:[{code:'502',debit:'12.34'},{code:'101',credit:12.34}]});
 for(const date of ['2026-01-01','2026-01-01','2026-01-12']){const p=payload(date);const a=await rpc('postEntry',p);assert(a===await rpc('postEntry',p),'retry');}
+const unbalanced=payload('2026-01-13');
+unbalanced.lines[0].debit='10.00';
+await verify.rejects(rpc('postEntry',unbalanced),/Balance/);
 const scope={book:'Personal',account:'502',from:'2026-01-01',through:'2026-01-31'};
 assert((await rpc('preview',scope)).count===0,'cannot clean before archival');
 const batch=await archive('batch');await archive('confirm',batch);await archive('complete');
 const totals=async()=>{const rows=(await rpc('state')).entries;const result={};for(const r of rows){const key=r.date+r.code;const s=result[key]||=[0,0];s[0]+=Math.round(r.debit*100);s[1]+=Math.round(r.credit*100);}return JSON.stringify(Object.entries(result).sort())};
 const before=await totals(),preview=await rpc('preview',scope);
+await verify.rejects(rpc('compact',{...scope,fingerprint:'stale',request:crypto.randomUUID()}),/Preview/);
 const command={...scope,...preview,request:crypto.randomUUID()};const cleaned=await rpc('compact',command);
 assert(cleaned.summaries===2&&cleaned.count===3,'summary counts');
 assert((await rpc('compact',command)).count===3,'cleanup retry');

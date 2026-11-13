@@ -45,6 +45,14 @@ function startPersonalLedger(){
   }finally{lock.releaseLock();}
   dailyPersonalArchive();
 }
+function activatePersonalLedger(){
+  const sheet=personalArchiveOwner_();
+  if(!PropertiesService.getScriptProperties().getProperty('PERSONAL_IMPORTED') || archiveRpc_('batch').length)
+    throw Error('Finish importing and verifying the first archive before switching.');
+  const archive=sheet.getSheetByName(ARCHIVE_TAB_);
+  if(!archive || archive.getLastRow()<2)throw Error('The first archive has not been written.');
+  PropertiesService.getScriptProperties().setProperty('PERSONAL_LIVE_WORKBOOK',sheet.getId());
+}
 function archiveRows_(record){
   const x=record.content;
   const parts=JSON.stringify(x).match(/[\s\S]{1,18000}/gu)||[''];
