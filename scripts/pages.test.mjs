@@ -132,3 +132,21 @@ test('session handoff accepts only the expected Pages window, nonce and ledger m
   port.onmessage({data:{id:2,method:'state',args:[]}});
   assert.equal(messages[1].result,'checked');
 });
+
+test('other tabs can reuse a live grant only for its account, and sign-out clears the grant',async()=>{
+  const worker={};
+  vm.runInNewContext(read('docs/session-worker.js'),{self:worker,fetch:async()=>({ok:true,json:async()=>({done:true,response:{result:'loaded'}})})});
+  function openTab(){
+    let last;
+    const port={postMessage:reply=>{last=reply;}};
+    worker.onconnect({ports:[port]});
+    return async(action,values={})=>{await port.onmessage({data:{id:1,action,...values}});return last;};
+  }
+  const first=openTab(),second=openTab();
+  await first('save',{account:'owner',token:'sample',expiresAt:Date.now()+3600000,deployment:'example'});
+  assert.equal((await second('check',{account:'owner'})).result,true);
+  assert.equal((await second('check',{account:'other'})).expired,true);
+  assert.equal((await second('call',{account:'owner',method:'state',args:[]})).result,'loaded');
+  await first('clear');
+  assert.equal((await second('check',{account:'owner'})).expired,true);
+});

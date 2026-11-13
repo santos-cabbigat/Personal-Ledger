@@ -1,6 +1,6 @@
 'use strict';
 
-// These are public deployment identifiers. Access tokens exist only in this tab's memory.
+// These are public deployment identifiers. Access tokens stay in volatile browser memory.
 const ledgerGoogle = (() => {
   const webApp = 'https://script.google.com/macros/s/AKfycbywWbAojmt9_zXueXPOqSXSqpJwDwyUydy_7sUJBxclgC9pc71yxjringWlJfGTxw/exec';
   const scopes = ['drive.file', 'spreadsheets', 'userinfo.email', 'script.container.ui']
@@ -13,9 +13,30 @@ const ledgerGoogle = (() => {
   function savedAccount(){
     try{return window.localStorage.getItem(accountKey)||'';}catch{return '';}
   }
-  function remember(email){
+  let workerPort,workerAccount='',workerId=0;
+  const workerRequests=new Map();
+  function workerRequest(action,payload={}){
+    if(!window.SharedWorker)return Promise.resolve(null);
+    try{
+      if(!workerPort){
+        const worker=new window.SharedWorker('./session-worker.js','personal-ledger-v1');
+        workerPort=worker.port;
+        workerPort.onmessage=({data})=>{
+          const done=workerRequests.get(data.id);
+          if(done){clearTimeout(done.timer);workerRequests.delete(data.id);done.resolve(data);}
+        };
+      }
+      return new Promise(resolve=>{
+        const id=++workerId;
+        const timer=setTimeout(()=>{workerRequests.delete(id);resolve(null);},action==='call'?90000:1200);
+        workerRequests.set(id,{resolve,timer});workerPort.postMessage({id,action,...payload});
+      });
+    }catch{return Promise.resolve(null);}
+  }
+  async function remember(email){
     if(!email)return;
     try{window.localStorage.setItem(accountKey,email);}catch{}
+    if(token && config && expiresAt>Date.now()+30000)await workerRequest('save',{account:email,token,expiresAt,deployment:config.deploymentId});
   }
   function clearChannel(){
     port?.close();port=null;
@@ -27,7 +48,8 @@ const ledgerGoogle = (() => {
     pending.clear();
   }
   function forget(){
-    token='';expiresAt=0;
+    token='';expiresAt=0;workerAccount='';
+    workerRequest('clear');
     try{window.localStorage.removeItem(accountKey);}catch{}
     clearChannel();
   }
@@ -83,7 +105,7 @@ const ledgerGoogle = (() => {
         };
         event.source.postMessage({type:'ledger-connect',nonce},event.origin,[channel.port2]);
       }
-      const timer=setTimeout(()=>finish(false),35000);
+      const timer=setTimeout(()=>finish(false),8000);
       window.addEventListener('message',receive);
       frame.src=webApp+'?ledgerSession='+encodeURIComponent(nonce);
       document.body.append(frame);
@@ -92,7 +114,16 @@ const ledgerGoogle = (() => {
   }
   async function restore(){
     const expected=savedAccount();
-    if(!expected || !await openChannel())return null;
+    if(!expected)return null;
+    if((await workerRequest('check',{account:expected}))?.result){
+      workerAccount=expected;
+      try{
+        const state=await call('state');
+        if(state?.email===expected && savedAccount()===expected)return state;
+      }catch{}
+      workerAccount='';
+    }
+    if(!await openChannel())return null;
     try{
       const state=await channelCall('state',[]);
       if(state?.email && state.email.toLowerCase()===expected.toLowerCase() && savedAccount()===expected)return state;
@@ -142,6 +173,7 @@ const ledgerGoogle = (() => {
             reject(Error('Google access was not granted for this ledger.'));
             return;
           }
+          workerAccount='';
           token = result.access_token;
           expiresAt = Date.now() + Number(result.expires_in) * 1000;
           resolve();
@@ -153,10 +185,16 @@ const ledgerGoogle = (() => {
     }).finally(() => { signingIn = null; });
     return signingIn;
   }
-  function authorized() { return Boolean(port || (token && expiresAt > Date.now()+30000)); }
+  function authorized() { return Boolean(workerAccount || port || (token && expiresAt > Date.now()+30000)); }
   async function call(method,...parameters) {
     if(!authorized() && method!=='state' && savedAccount()){
       if(!await restore())throw Error('Sign in to Google again to continue.');
+    }
+    if(workerAccount){
+      const reply=await workerRequest('call',{account:workerAccount,method,args:parameters});
+      if(!reply || reply.expired){workerAccount='';throw Error(reply?'Sign in to Google again to continue.':'Google did not confirm the result. Refresh before retrying.');}
+      if(reply.error)throw Error(reply.error);
+      return reply.result;
     }
     if(port)return channelCall(method,parameters);
     if (!authorized()) throw Error('Sign in to Google again to continue.');

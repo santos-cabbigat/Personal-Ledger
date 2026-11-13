@@ -20,7 +20,7 @@
   <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/privacy.html">Privacy policy</a> · <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/terms.html">Terms of service</a></footer>
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
-<script src="google-client.js?v=2"></script>
+<script src="google-client.js?v=3"></script>
 <script src="demo.js"></script><script>
 
 'use strict';
@@ -128,7 +128,7 @@ async function load(initial){
     next=next || await call('state');
     if(version!==loadVersion)return;
     if(next.loadError)throw Error(next.loadError);
-    if(pages)ledgerGoogle.remember(next.email);
+    if(pages){await ledgerGoogle.remember(next.email);if(version!==loadVersion)return;}
     if(next.connected===false){
       resetLedger();
       accessScreen('Set up your ledger','Choose the workbook for '+next.email+'. This choice is saved to your account.',
