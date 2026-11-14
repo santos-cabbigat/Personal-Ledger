@@ -408,7 +408,7 @@ function editEntry(index){
 }
 function ledgerTable(lines){return '<div class="table"><table><tr><th>Account</th><th>Debit</th><th>Credit</th></tr>'+lines.map(l=>'<tr><td>'+esc(l.name)+(l.lineMemo&&l.lineMemo!==l.memo?'<br><small>'+esc(l.lineMemo)+'</small>':'')+(l.reference?'<br><small>Ref. '+esc(l.reference)+'</small>':'')+'</td><td>'+(+l.debit?amount(l.debit):'—')+'</td><td>'+(+l.credit?amount(l.credit):'—')+'</td></tr>').join('')+'</table></div>'}
 function idPicker(groups){
-  const posted=groups.filter(([row])=>!row.sheetDraft || row.groupKey?.includes('id:'));
+  const posted=groups.filter(([row])=>!row.sheetDraft || row.groupKey?.includes('id:') || (pages && !row.id.startsWith('Sheet rows ')));
   if(!posted.length)return '';
   return field('Find entry ID','<select id="entryIdPicker" onchange="if(this.value)detail(Number(this.value))"><option value="">Choose an entry ID</option>'+
     posted.map(([line])=>'<option value="'+data.entries.indexOf(line)+'">'+esc(line.id)+' · '+esc(line.memo)+'</option>').join('')+'</select>');

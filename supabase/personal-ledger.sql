@@ -158,7 +158,7 @@ begin
  when 'preview' then return ledger.cleanup(p,false);
  when 'compact' then return ledger.cleanup(p,true);
  when 'renameLedger' then value:=trim(p->>'name'); if coalesce(length(value),0) not between 1 and 60 then raise exception 'Enter an app name.'; end if;
-   update ledger.settings set title=value;
+   update ledger.settings set title=value where singleton;
  when 'saveBookType' then value:=trim(p->>'name'); if coalesce(length(value),0) not between 1 and 80 then raise exception 'Enter a book name.'; end if;
    insert into ledger.books values(value) on conflict do nothing;
  when 'saveAccount' then
@@ -199,7 +199,7 @@ begin
      set last_number=greatest(ledger.daily_numbers.last_number,excluded.last_number);
    end if;
  end loop;
- update ledger.settings set initialized=true,title=p->>'title',report_book=p->>'reportBook',warnings=coalesce(p->'warnings','[]');
+ update ledger.settings set initialized=true,title=p->>'title',report_book=p->>'reportBook',warnings=coalesce(p->'warnings','[]') where singleton;
  insert into ledger.archive_queue(key,revision,content) values(gen_random_uuid(),gen_random_uuid(),jsonb_build_object('catalog',ledger.catalog()));
  return jsonb_build_object('entries',(select count(*) from ledger.entries),'accounts',(select count(*) from ledger.accounts));
 end $$;
