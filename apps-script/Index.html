@@ -363,7 +363,7 @@ function filtered(){
   return book ? data.entries.filter(row=>row.book===book) : data.entries;
 }
 function sheetWarnings(){
-  if(!data.warnings?.length)return '';
+  if(pages || !data.warnings?.length)return '';
   return '<details class="notice"><summary>Check '+data.warnings.length+' item(s) in the Journal sheet</summary><ul>'+
     data.warnings.map(w=>'<li>'+esc(w)+'</li>').join('')+'</ul></details>';
 }
@@ -413,7 +413,9 @@ function idPicker(groups){
   return field('Find entry ID','<select id="entryIdPicker" onchange="if(this.value)detail(Number(this.value))"><option value="">Choose an entry ID</option>'+
     posted.map(([line])=>'<option value="'+data.entries.indexOf(line)+'">'+esc(line.id)+' · '+esc(line.memo)+'</option>').join('')+'</select>');
 }
-function journals(){if(!ready())return;const groups=groupEntries(filtered());workspace('Journal','<div class="actions">'+btn('New entry',"entryForm()",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
+function journals(){if(!ready())return;const groups=groupEntries(filtered());const drafts=groups.filter(([entry])=>entry.sheetDraft).length;
+  const review=pages&&drafts?'<p class="notice">'+drafts+' balanced '+(drafts===1?'draft needs':'drafts need')+' review before posting.</p>':'';
+  workspace('Journal',review+'<div class="actions">'+btn('New entry',"entryForm()",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
 let expenseMonth='';
 function spendingByAccount(entries,month,book) {
   const accounts=new Map();
@@ -735,7 +737,7 @@ async function dbSettings(){
   dialog('Settings',field('App name','<input id="appName" maxlength="60" value="'+esc(data.title)+'">')+
     (data.owner?btn('Save name','saveName()')+bookSettings():'')+
     '<section><h3>Supabase status</h3><div id="dbUsage" role="status">Checking…</div></section>'+
-    (data.owner?btn('Manage archived entries','cleanupForm()'):'')+
+    (data.owner?btn('Manage archived entries','cleanupForm()')+'<p><a class="link" href="https://supabase.com/dashboard/project/uyyihuvjbrbsombzzvqw" target="_blank" rel="noopener">Open personal Supabase project</a></p>':'')+
     '<p><a class="link" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener">Open Google Sheet archive</a></p><p>'+esc(data.email)+'</p>'+btn('Sign out','signOut()'));
   const target=el('dbUsage');try{
     const result=await call('status'),pct=result.bytes/result.limitBytes*100;
