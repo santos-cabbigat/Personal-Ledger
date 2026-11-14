@@ -200,6 +200,55 @@ tr:last-child td { border-bottom: 0; }
 .bookGrant input { width: 20px; height: 20px; min-height: 20px; margin: 0; padding: 0; flex: none; accent-color: var(--teal); }
 .bookGrant select:disabled { opacity: .55; }
 @media(max-width:420px){ .bookGrant { grid-template-columns: 1fr; gap: 0; } }
+
+/* Shared navigation and forms for the ledger settings screens. */
+.settingsScreen { --settings-pad: clamp(18px,3vw,30px); width: min(560px,calc(100vw - 32px)); padding: 0; background: var(--paper); }
+.settingsScreen.settingsHome { width: min(820px,calc(100vw - 32px)); }
+.settingsScreen header { position: sticky; z-index: 1; top: 0; justify-content: start; padding: 14px var(--settings-pad); background: var(--paper); }
+.settingsScreen header h2 { flex: 1; min-width: 0; font-size: clamp(21px,3vw,27px); outline: none; overflow-wrap: anywhere; }
+.settingsScreen header button { flex: none; border: 0; background: transparent; box-shadow: none; color: var(--teal); width: 44px; height: 44px; padding: 0; }
+.settingsScreen #settingsBack { font-size: 32px; margin-left: -10px; }
+.settingsScreen .body { padding: 20px var(--settings-pad) 24px; margin: 0; }
+.settingsScreen #err:not(:empty) { padding: 0 var(--settings-pad) 18px; margin: 0; }
+.settingsGrid { display: grid; gap: 20px; }
+.settingsGrid > div { min-width: 0; }
+.settingsGrid > div:empty { display: none; }
+.settingGroup + .settingGroup,.settingsScreen .settingList + .settingGroup { margin-top: 20px; }
+.settingGroup h3 { font-size: 13px; font-weight: 680; letter-spacing: .01em; color: var(--teal); margin: 0 0 7px 4px; }
+.settingList,.settingsBooks { border: 1px solid var(--line); border-radius: 15px; background: #fffaf0; }
+.settingList > :first-child { border-radius: 14px 14px 0 0; }
+.settingList > :last-child { border-radius: 0 0 14px 14px; }
+.settingList > :only-child { border-radius: 14px; }
+.settingRow { display: grid; grid-template-columns: 28px minmax(0,1fr) 12px; align-items: center; gap: 12px; min-height: 52px; width: 100%; padding: 11px 14px; text-align: start; background: transparent; border: 0; border-radius: 0; box-shadow: none; color: var(--ink); text-decoration: none; }
+.settingList > * + * { border-top: 1px solid var(--line); }
+.settingRow:hover:not(:disabled) { background: #f5f0e4; }
+.settingIcon { display: grid; place-items: center; color: var(--teal); }
+.settingText strong,.settingText small { display: block; overflow-wrap: anywhere; }
+.settingText strong,.settingInfo strong { font-size: 15px; font-weight: 600; }
+.settingText small { margin-top: 2px; font-weight: 400; }
+.settingArrow { justify-self: end; color: var(--muted); font-size: 22px; line-height: 1; }
+.settingRow:disabled { opacity: .7; }
+.settingInfo { display: grid; padding: 13px 16px; gap: 2px; margin: 0; overflow-wrap: anywhere; }
+.settingsScreen label { margin: 0 0 16px; }
+.settingsScreen form button.primary { min-height: 46px; }
+.settingsScreen .body > .sub:last-child { margin: 16px 0 0; }
+.settingsBooks { margin: 0 0 18px; padding: 0; list-style: none; }
+.settingsBooks li { padding: 10px 15px; overflow-wrap: anywhere; }
+.settingsBooks li + li { border-top: 1px solid var(--line); }
+.settingsScreen .bookGrants { padding: 4px 12px 8px; min-width: 0; background: #fffaf0; }
+.settingsScreen .bookGrant { grid-template-columns: minmax(0,1fr) minmax(98px,40%); gap: 8px; }
+.settingsScreen .bookGrant + .bookGrant { border-top: 1px solid var(--line); }
+.settingsScreen .bookGrant label { margin: 0; padding: 5px 0; }
+.settingsScreen .bookGrant select { width: 100%; }
+.settingsScreen .revokePerson { color: #963d33; box-shadow: none; margin-top: 14px; }
+.settingsScreen progress { display: block; width: 100%; margin: 12px 0; accent-color: var(--teal); }
+@media(min-width:700px){ .settingsGrid:has(> div:nth-child(2):not(:empty)) { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 24px; } }
+@media(max-width:640px){
+  dialog.settingsScreen,dialog.settingsHome { margin: 0; inset: 0; width: 100%; max-width: none; height: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; overscroll-behavior: contain; }
+  .settingsScreen header { padding-top: max(8px,env(safe-area-inset-top)); padding-bottom: 8px; }
+  .settingsScreen .body { padding-bottom: max(24px,env(safe-area-inset-bottom)); }
+  .settingsScreen form .primary,.settingsScreen .revokePerson { width: 100%; }
+}
 </style>
 </head><body>
 <main>
@@ -219,7 +268,7 @@ tr:last-child td { border-bottom: 0; }
   <footer class="sub">
   <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/privacy.html">Privacy policy</a> · <a target="_blank" rel="noopener" href="https://santos-cabbigat.github.io/Personal-Ledger/terms.html">Terms of service</a></footer>
 </main>
-<dialog id="modal" aria-labelledby="heading"><header><h2 id="heading"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
+<dialog id="modal" aria-labelledby="heading"><header><button type="button" id="settingsBack" aria-label="Back" hidden>‹</button><h2 id="heading" tabindex="-1"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 
 
 <script>
@@ -287,9 +336,10 @@ function recoveryLink(error){
   if(!/paused|unavailable|failed to fetch|network|offline|temporar/i.test(error.message))return '';
   return btn('Check service status','openServiceStatus()');
 }
-async function openServiceStatus(){
-  dialog('Service status','<p id="serviceResult" role="status">Checking the sign-in service…</p><div class="actions">'+
-    btn('Check again','openServiceStatus()')+'<a class="link" href="https://supabase.com/dashboard/project/uyyihuvjbrbsombzzvqw" target="_blank" rel="noopener">Open personal Supabase project</a></div>');
+async function openServiceStatus(fromSettings=false){
+  const show=fromSettings?(title,html)=>settingsDialog(title,html,settings):dialog;
+  show('Service status','<p id="serviceResult" role="status">Checking the sign-in service…</p><div class="actions">'+
+    btn('Check again','openServiceStatus('+fromSettings+')')+'<a class="link" href="https://supabase.com/dashboard/project/uyyihuvjbrbsombzzvqw" target="_blank" rel="noopener">Open personal Supabase project</a></div>');
   const output=el('serviceResult');
   const state=await ledgerDb.serviceStatus();
   const messages={
@@ -381,7 +431,7 @@ function connectButtons(){
 }
 function connectDrive(){dialog('Connect Google Drive','<p>Open your own ledger, or create an empty one in My Drive → Personal &amp; Business Ledger.</p>'+btn('Connect',"write('connectPersonalDrive',[])",true));}
 function existingLedgerForm(){dialog('Open existing ledger',field('Link to your ledger spreadsheet','<input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/…">')+btn('Open',"write('openExistingLedger',[el('sheetUrl').value])",true));}
-function dialog(title,html){el('modal').classList.remove('reportClean');el('heading').textContent=title;el('content').innerHTML=html;el('err').textContent='';if(!el('modal').open)el('modal').showModal();el('modal').scrollTop=0}
+function dialog(title,html){el('modal').classList.remove('reportClean','settingsScreen','settingsHome');el('settingsBack').hidden=true;el('settingsBack').onclick=null;el('heading').textContent=title;el('content').innerHTML=html;el('err').textContent='';if(!el('modal').open)el('modal').showModal();el('modal').scrollTop=0}
 function closeDialog(){if(!locked)el('modal').close()}
 el('modal').addEventListener('click',event=>{
   if(event.target!==el('modal'))return;
@@ -784,34 +834,90 @@ function saveBookTypeFromForm(){
   if(!name){el('err').textContent='Enter a book name.';return;}
   write('saveBookType',[name,data.ledgerId],settings);
 }
-async function dbSettings(){
-  if(!data.owner){
-    dialog('Settings','<p>'+esc(data.email)+'</p>'+data.books.map(b=>'<p><b>'+esc(b)+'</b> · '+(canEdit(b)?'Co-editor':'View only')+'</p>').join('')+btn('Sign out','signOut()'));
-    return;
-  }
-  dialog('Settings',field('App name','<input id="appName" maxlength="60" value="'+esc(data.title)+'">')+
-    (data.owner?btn('Save name','saveName()')+bookSettings()+btn('People and book access','peopleSettings()'):'')+
-    '<section><h3>Supabase status</h3><div id="dbUsage" role="status">Checking…</div></section>'+
-    (data.owner?btn('Manage archived entries','cleanupForm()')+btn('Service status','openServiceStatus()'):'')+
-    '<p><a class="link" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener">Open Google Sheet archive</a> <a class="link" href="downloads/Personal-Ledger-Live.apk" download>Download Android launcher</a></p><p>'+esc(data.email)+'</p>'+btn('Sign out','signOut()'));
-  const target=el('dbUsage');try{
+const settingIcons={
+  person:'M16 21v-2a5 5 0 0 0-10 0v2 M11 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M17 6a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4',
+  name:'m4 16 11-11 4 4L8 20l-5 1z M13 7l4 4',
+  books:'M3 5h5v15H3z M9 4h5v16H9z M16 6l4-1 3 14-4 1z',
+  storage:'M4 6c0-4 16-4 16 0s-16 4-16 0v11c0 4 16 4 16 0V6 M4 12c0 4 16 4 16 0',
+  archive:'M3 4h18v5H3z M5 9v11h14V9 M10 13h4',
+  sheet:'M5 3h10l4 4v14H5z M8 12h8m-8 4h8m-4-5v7',
+  status:'M2 12h5l3-8 4 16 3-8h5',
+  download:'M12 3v12m-5-5 5 5 5-5 M4 16v5h16v-5',
+  exit:'M10 4H4v16h6m4-12 4 4-4 4m-6-4h10'
+};
+function settingRow(icon,label,detail,attrs,link=false){
+  const tag=link?'a':'button';
+  return '<'+tag+' class="settingRow" '+(link?'':'type="button" ')+attrs+'>'+
+    '<span class="settingIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+settingIcons[icon]+'"/></svg></span>'+
+    '<span class="settingText"><strong>'+esc(label)+'</strong>'+(detail?'<small>'+esc(detail)+'</small>':'')+'</span>'+
+    '<span class="settingArrow" aria-hidden="true">›</span></'+tag+'>';
+}
+function settingGroup(title,rows){
+  return '<section class="settingGroup"><h3>'+esc(title)+'</h3><div class="settingList">'+rows+'</div></section>';
+}
+function settingsDialog(title,html,back){
+  dialog(title,html);
+  const panel=el('modal'),arrow=el('settingsBack');
+  panel.classList.add('settingsScreen');
+  if(back){arrow.hidden=false;arrow.onclick=()=>{if(!locked)back();};}
+  else panel.classList.add('settingsHome');
+  el('heading').focus({preventScroll:true});
+}
+function nameSettings(){
+  settingsDialog('App name', '<form onsubmit="event.preventDefault();saveName()">'+
+    field('App name','<input id="appName" maxlength="60" required value="'+esc(data.title)+'">')+
+    '<button class="primary">Save name</button></form>',settings);
+}
+function booksSettings(){
+  settingsDialog('Book types','<ul class="settingsBooks">'+data.books.map(b=>'<li>'+esc(b)+'</li>').join('')+'</ul>'+
+    '<form onsubmit="event.preventDefault();saveBookTypeFromForm()">'+field('New book name','<input id="newBookType" required maxlength="80">')+
+    '<button class="primary">Add book type</button></form>',settings);
+}
+function dbSettings(){
+  const manage=data.owner, available=preview?'disabled':'onclick="peopleSettings()"';
+  const ledger=manage?settingGroup('Ledger',
+    settingRow('person','People and book access','',available)+
+    settingRow('name','App name',data.title,'onclick="nameSettings()"')+
+    settingRow('books','Book types',data.books.join(' · '),'onclick="booksSettings()"')):
+    settingGroup('Book access',data.books.map(b=>'<div class="settingInfo"><strong>'+esc(b)+'</strong><span>'+(canEdit(b)?'Co-editor':'View only')+'</span></div>').join(''));
+  const archive=manage?settingGroup('Storage and archive',
+    settingRow('storage','Storage usage','',preview?'disabled':'onclick="storageSettings()"')+
+    settingRow('archive','Manage archived entries','',preview?'disabled':'onclick="cleanupForm()"')+
+    settingRow('sheet','Open Google Sheet archive','',preview?'disabled':'href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener"',!preview)):'';
+  const device=manage?settingGroup('App and device',
+    settingRow('status','Service status','',preview?'disabled':'onclick="openServiceStatus(true)"')+
+    settingRow('download','Download Android launcher','','href="downloads/Personal-Ledger-Live.apk" download',true)):'';
+  const account=settingGroup('Account','<div class="settingInfo"><small>Signed in as</small><strong>'+esc(preview?'Preview user':data.email)+'</strong></div>'+
+    settingRow('exit','Sign out','',preview?'disabled':'onclick="signOut()"'));
+  settingsDialog('Settings','<div class="settingsGrid"><div>'+ledger+archive+'</div><div>'+device+account+'</div></div>'+
+    (preview?'<p class="sub">Sample books only. Live account services require sign-in.</p>':''));
+}
+async function storageSettings(){
+  settingsDialog('Storage usage','<div id="dbUsage" role="status">Checking…</div>',settings);
+  const target=el('dbUsage');
+  try{
     const result=await call('status'),pct=result.bytes/result.limitBytes*100;
     const level=pct>=75?'Red warning':pct>=60?'Warning':'Healthy';
-    target.innerHTML='<strong class="'+(pct>=75?'usageRed':pct>=60?'usageAmber':'')+'">'+level+' · '+pct.toFixed(1)+'% used</strong><p>'+Math.round(result.bytes/1048576)+' of '+Math.round(result.limitBytes/1048576)+' MiB database space</p><p>Last verified archive: '+esc(result.lastArchive?new Date(result.lastArchive).toLocaleString():'Awaiting first archive')+'<br>Revisions waiting: '+esc(result.pending)+'</p>';
-  }catch(e){target.innerHTML=esc(e.message)+recoveryLink(e);}
+    target.innerHTML='<strong class="'+(pct>=75?'usageRed':pct>=60?'usageAmber':'')+'">'+level+' · '+pct.toFixed(1)+'% used</strong>'+
+      '<progress max="100" value="'+Math.min(100,pct)+'" aria-label="Database usage"></progress><p>'+Math.round(result.bytes/1048576)+' of '+Math.round(result.limitBytes/1048576)+' MiB used</p>'+
+      '<div class="settingList"><div class="settingInfo"><small>Last verified archive</small><strong>'+esc(result.lastArchive?new Date(result.lastArchive).toLocaleString():'Awaiting first archive')+
+      '</strong></div><div class="settingInfo"><small>Revisions waiting</small><strong>'+esc(result.pending)+'</strong></div></div>';
+  }catch(e){target.textContent=e.message;}
 }
 let people=[];
 async function peopleSettings(){
   if(!data?.owner)return;
-  dialog('People and book access','<p role="status">Loading people…</p>');
+  settingsDialog('People and book access','<p role="status">Loading people…</p>',settings);
   const panel=el('content').firstElementChild;
   try{
     const list=await call('listAccess');
-    if(!panel.isConnected)return;
+    if(!panel.isConnected || !el('modal').open)return;
     people=list;
-    dialog('People and book access',btn('Add person','personForm(-1)',true)+'<p><a class="link" href="?reviewer=1" target="_blank" rel="noopener">Reviewer sign-in link</a></p>'+
-      people.map((person,i)=>'<button class="item" onclick="personForm('+i+')"><span class="entryText"><strong>'+esc(person.email)+'</strong><small>'+
-      esc(Object.entries(person.books).map(([b,role])=>b+' · '+(role==='editor'?'Co-editor':'View only')).join(' / '))+'</small></span></button>').join(''));
+    const actions=settingRow('person','Add person','','onclick="personForm(-1)"')+
+      settingRow('exit','Reviewer sign-in link','','href="?reviewer=1" target="_blank" rel="noopener"',true);
+    const members=people.map((person,i)=>settingRow('person',person.email,Object.entries(person.books).map(([b,r])=>b+' · '+(r==='editor'?'Co-editor':'View only')).join(' / '),'onclick="personForm('+i+')"')).join('');
+    settingsDialog('People and book access','<div class="settingList">'+actions+'</div>'+
+      settingGroup('People',members||'<p class="settingInfo">No people added yet.</p>'),settings);
   }catch(e){if(panel.isConnected)panel.textContent=e.message;}
 }
 function personForm(index){
@@ -823,13 +929,13 @@ function personForm(index){
       '<select aria-label="Access for '+name+'" id="grant'+i+'" '+(role?'':'disabled')+'>'+
       '<option value="viewer">View only</option><option value="editor" '+(role==='editor'?'selected':'')+'>Co-editor</option></select></div>';
   }).join('');
-  dialog(adding?'Add person':'Manage person','<form id="personForm" onsubmit="event.preventDefault();savePerson('+index+')">'+
+  settingsDialog(adding?'Add person':'Manage person','<form id="personForm" onsubmit="event.preventDefault();savePerson('+index+')">'+
     field('Email','<input id="personEmail" type="email" autocomplete="off" required '+(adding?'':'readonly')+' value="'+esc(person?.email||'')+'">')+
     field(adding?'Password you assign':'New password (optional)','<input id="personPass" type="password" autocomplete="new-password" minlength="10" '+(adding?'required':'')+'>')+
     '<p class="sub">Give this person their password and the reviewer sign-in link. They can keep using it until you change or revoke access.</p>'+
     '<fieldset class="bookGrants"><legend>Book access</legend>'+bookFields+'</fieldset><p class="sub">Both roles can download reports. Co-editors can also add accounts and record or edit entries.</p>'+
     '<button class="primary" type="submit">Save access</button></form>'+
-    (adding?'':btn('Revoke access','confirmRevoke('+index+')'))+btn('Back','peopleSettings()'));
+    (adding?'':'<button type="button" class="revokePerson" onclick="confirmRevoke('+index+')">Revoke access</button>'),peopleSettings);
 }
 function setBookSelected(index,checked){
   const role=el('grant'+index);
@@ -852,17 +958,17 @@ async function savePerson(index){
 }
 function confirmRevoke(index){
   const person=people[index];
-  dialog('Revoke access?','<p>'+esc(person.email)+' will lose access to every book in this ledger.</p>'+
-    btn('Back','personForm('+index+')')+btn('Revoke access','revokePerson('+index+')',true));
+  settingsDialog('Revoke access?','<p>'+esc(person.email)+' will lose access to every book in this ledger.</p>'+
+    btn('Revoke access','revokePerson('+index+')',true),()=>personForm(index));
 }
 function revokePerson(index){
   const {email,version}=people[index];write('revokeAccess',[{email,version}],peopleSettings);
 }
 function cleanupForm(){
-  dialog('Manage archived entries',field('Book','<select id="cleanBook" onchange="cleanupAccounts()">'+options(data.books,el('scope').value)+'</select>')+
+  settingsDialog('Manage archived entries',field('Book','<select id="cleanBook" onchange="cleanupAccounts()">'+options(data.books,el('scope').value)+'</select>')+
     field('Account','<select id="cleanAccount"></select>')+'<div class="two">'+field('From','<input id="cleanFrom" type="date" required>')+
     field('Through','<input id="cleanTo" type="date" required>')+'</div><p>Only verified, archived entries can be summarized. Selecting an account includes both sides of every matching entry.</p>'+
-    btn('Preview range','previewCleanup()',true));cleanupAccounts();
+    btn('Preview range','previewCleanup()',true),settings);cleanupAccounts();
 }
 function cleanupAccounts(){
   el('cleanAccount').innerHTML='<option value="">All accounts</option>'+acOptions(chartFor(el('cleanBook').value).filter(a=>a.use==='Posting'),'');
@@ -874,16 +980,27 @@ async function previewCleanup(){
     if(!p.from||!p.through||p.from>p.through)throw Error('Choose a valid date range.');
     const result=await call('preview',p);
     cleanupRequest={...p,fingerprint:result.fingerprint,request:crypto.randomUUID()};
-    dialog('Review archived range','<p>'+esc(p.book)+' · '+esc(p.account||'All accounts')+' · '+esc(p.from)+' through '+esc(p.through)+'</p>'+
+    settingsDialog('Review archived range','<p>'+esc(p.book)+' · '+esc(p.account||'All accounts')+' · '+esc(p.from)+' through '+esc(p.through)+'</p>'+
       '<p><strong>'+esc(result.count)+' complete journal entries</strong> eligible. '+esc(result.pending)+' pending or draft entries will stay in the database.</p>'+
       '<p>Each posting date keeps its original debit and credit totals by account. Full detail stays in Google Sheets.</p>'+
-      btn('Back','cleanupForm()')+(result.count?btn('Replace detail with summaries','applyCleanup()',true):''));
+      (result.count?btn('Replace detail with summaries','applyCleanup()',true):''),cleanupForm);
   }catch(e){el('err').textContent=e.message;}
 }
 function applyCleanup(){if(cleanupRequest)write('compact',[cleanupRequest],dbSettings);}
-function sheetSettings(){if(!ready())return;dialog('Settings',(data.owner?field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()'):'<b>'+esc(data.title)+'</b>')+bookSettings()+'<p><a class="link" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx">Download all data (Excel)</a></p>'+connectButtons()+'<p class="sub">Signed in as '+esc(data.email)+'</p>'+(pages?btn('Sign out','signOut()'):'')+'<a class="link" href="'+esc(data.url)+'" target="_blank" rel="noopener">Open Google Sheet</a>'+(data.owner?'<p>To add another person, open the Sheet, tap Share, and invite their Google account as an editor.</p>':''))}
-function settings(){if(!ready())return;if(pages)return dbSettings();if(!preview)return sheetSettings();dialog('Settings',field('App name','<input id="appName" value="'+esc(data.title)+'" maxlength="60">')+btn('Save name','saveName()',true)+bookSettings()+'<p class="sub">Preview changes last until you reload this page.</p>')}
-function saveName(){write('renameLedger',[el('appName').value,data.ledgerId])}
+function sheetSettings(){
+  if(!ready())return;
+  const ledger=settingGroup('Ledger',(data.owner?settingRow('name','App name',data.title,'onclick="nameSettings()"'):'')+
+    settingRow('books','Book types',data.books.join(' · '),'onclick="booksSettings()"'));
+  const workbook=settingGroup('Workbook',settingRow('sheet','Open Google Sheet','','href="'+esc(data.url)+'" target="_blank" rel="noopener"',true)+
+    settingRow('download','Download all data (Excel)','','href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/export?format=xlsx" target="_blank" rel="noopener"',true)+
+    settingRow('books','Choose an existing ledger','','onclick="existingLedgerForm()"')+
+    settingRow('name','Set up a personal workbook','','onclick="connectDrive()"'));
+  const account=settingGroup('Account','<div class="settingInfo"><small>Signed in as</small><strong>'+esc(data.email)+'</strong></div>'+
+    (data.owner?'<p class="settingInfo sub">Use Share in Google Sheets to invite an editor.</p>':''));
+  settingsDialog('Settings','<div class="settingsGrid"><div>'+ledger+'</div><div>'+workbook+account+'</div></div>');
+}
+function settings(){if(!ready())return;if(inSheet)return sheetSettings();dbSettings();}
+function saveName(){write('renameLedger',[el('appName').value,data.ledgerId],settings)}
 if(pages)window.addEventListener('storage',event=>{
   if(event.key==='personal-ledger.auth.v1' && !event.newValue){++loadVersion;resetLedger();loginScreen();}
 });

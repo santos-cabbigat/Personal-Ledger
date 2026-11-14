@@ -197,3 +197,52 @@ tr:last-child td { border-bottom: 0; }
 .bookGrant input { width: 20px; height: 20px; min-height: 20px; margin: 0; padding: 0; flex: none; accent-color: var(--teal); }
 .bookGrant select:disabled { opacity: .55; }
 @media(max-width:420px){ .bookGrant { grid-template-columns: 1fr; gap: 0; } }
+
+/* Shared navigation and forms for the ledger settings screens. */
+.settingsScreen { --settings-pad: clamp(18px,3vw,30px); width: min(560px,calc(100vw - 32px)); padding: 0; background: var(--paper); }
+.settingsScreen.settingsHome { width: min(820px,calc(100vw - 32px)); }
+.settingsScreen header { position: sticky; z-index: 1; top: 0; justify-content: start; padding: 14px var(--settings-pad); background: var(--paper); }
+.settingsScreen header h2 { flex: 1; min-width: 0; font-size: clamp(21px,3vw,27px); outline: none; overflow-wrap: anywhere; }
+.settingsScreen header button { flex: none; border: 0; background: transparent; box-shadow: none; color: var(--teal); width: 44px; height: 44px; padding: 0; }
+.settingsScreen #settingsBack { font-size: 32px; margin-left: -10px; }
+.settingsScreen .body { padding: 20px var(--settings-pad) 24px; margin: 0; }
+.settingsScreen #err:not(:empty) { padding: 0 var(--settings-pad) 18px; margin: 0; }
+.settingsGrid { display: grid; gap: 20px; }
+.settingsGrid > div { min-width: 0; }
+.settingsGrid > div:empty { display: none; }
+.settingGroup + .settingGroup,.settingsScreen .settingList + .settingGroup { margin-top: 20px; }
+.settingGroup h3 { font-size: 13px; font-weight: 680; letter-spacing: .01em; color: var(--teal); margin: 0 0 7px 4px; }
+.settingList,.settingsBooks { border: 1px solid var(--line); border-radius: 15px; background: #fffaf0; }
+.settingList > :first-child { border-radius: 14px 14px 0 0; }
+.settingList > :last-child { border-radius: 0 0 14px 14px; }
+.settingList > :only-child { border-radius: 14px; }
+.settingRow { display: grid; grid-template-columns: 28px minmax(0,1fr) 12px; align-items: center; gap: 12px; min-height: 52px; width: 100%; padding: 11px 14px; text-align: start; background: transparent; border: 0; border-radius: 0; box-shadow: none; color: var(--ink); text-decoration: none; }
+.settingList > * + * { border-top: 1px solid var(--line); }
+.settingRow:hover:not(:disabled) { background: #f5f0e4; }
+.settingIcon { display: grid; place-items: center; color: var(--teal); }
+.settingText strong,.settingText small { display: block; overflow-wrap: anywhere; }
+.settingText strong,.settingInfo strong { font-size: 15px; font-weight: 600; }
+.settingText small { margin-top: 2px; font-weight: 400; }
+.settingArrow { justify-self: end; color: var(--muted); font-size: 22px; line-height: 1; }
+.settingRow:disabled { opacity: .7; }
+.settingInfo { display: grid; padding: 13px 16px; gap: 2px; margin: 0; overflow-wrap: anywhere; }
+.settingsScreen label { margin: 0 0 16px; }
+.settingsScreen form button.primary { min-height: 46px; }
+.settingsScreen .body > .sub:last-child { margin: 16px 0 0; }
+.settingsBooks { margin: 0 0 18px; padding: 0; list-style: none; }
+.settingsBooks li { padding: 10px 15px; overflow-wrap: anywhere; }
+.settingsBooks li + li { border-top: 1px solid var(--line); }
+.settingsScreen .bookGrants { padding: 4px 12px 8px; min-width: 0; background: #fffaf0; }
+.settingsScreen .bookGrant { grid-template-columns: minmax(0,1fr) minmax(98px,40%); gap: 8px; }
+.settingsScreen .bookGrant + .bookGrant { border-top: 1px solid var(--line); }
+.settingsScreen .bookGrant label { margin: 0; padding: 5px 0; }
+.settingsScreen .bookGrant select { width: 100%; }
+.settingsScreen .revokePerson { color: #963d33; box-shadow: none; margin-top: 14px; }
+.settingsScreen progress { display: block; width: 100%; margin: 12px 0; accent-color: var(--teal); }
+@media(min-width:700px){ .settingsGrid:has(> div:nth-child(2):not(:empty)) { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 24px; } }
+@media(max-width:640px){
+  dialog.settingsScreen,dialog.settingsHome { margin: 0; inset: 0; width: 100%; max-width: none; height: 100%; height: 100dvh; max-height: none; border: 0; border-radius: 0; overscroll-behavior: contain; }
+  .settingsScreen header { padding-top: max(8px,env(safe-area-inset-top)); padding-bottom: 8px; }
+  .settingsScreen .body { padding-bottom: max(24px,env(safe-area-inset-bottom)); }
+  .settingsScreen form .primary,.settingsScreen .revokePerson { width: 100%; }
+}
