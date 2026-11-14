@@ -24,9 +24,22 @@ const ledgerDb=(()=>{
  }
  async function session(){return check(await client.auth.getSession()).session;}
  async function signIn(email,password){return check(await client.auth.signInWithPassword({email,password}));}
+ async function signInReviewer(email,password){
+   const alias=check(await client.rpc('personal_reviewer_alias',{address:email}));
+   try{return await signIn(alias,password);}
+   catch(error){if(!/invalid login credentials/i.test(error.message))throw error;return signIn(email,password);}
+ }
+ async function provisionReviewer(payload){
+   const {data,error}=await client.functions.invoke('ledger-reviewer',{body:payload});
+   if(error){
+     const details=await error.context?.json?.().catch(()=>null);
+     throw Error(details?.error||error.message);
+   }
+   return data;
+ }
  async function signup(email,password){return check(await client.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}}));}
  async function forgot(email){return check(await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname+'?reset=1'}));}
  async function password(value){return check(await client.auth.updateUser({password:value}));}
  async function signOut(){return check(await client.auth.signOut({scope:'local'}));}
- return {serviceStatus,session,signIn,signup,forgot,password,signOut,call};
+ return {serviceStatus,session,signIn,signInReviewer,provisionReviewer,signup,forgot,password,signOut,call};
 })();

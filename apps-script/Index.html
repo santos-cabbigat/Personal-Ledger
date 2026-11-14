@@ -193,6 +193,13 @@ tr:last-child td { border-bottom: 0; }
 #accessActions .loginLinks button, #accessActions .loginFoot button { width: auto; padding: 4px 0; min-height: 44px; border: 0; color: var(--teal); background: transparent; box-shadow: none; }
 #accessActions .loginFoot button { font-weight: 500; }
 .usageRed{color:#a62c29}.usageAmber{color:#885700}
+.bookGrants { margin: 16px 0; padding: 8px 16px 16px; border: 1px solid var(--line); border-radius: 12px; }
+.bookGrants legend { padding: 0 6px; color: var(--teal); font-weight: 650; }
+.bookGrant { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: center; gap: 12px; padding: 4px 0; }
+.bookGrant label { display: flex; align-items: center; gap: 9px; min-height: 44px; margin: 0; overflow-wrap: anywhere; cursor: pointer; }
+.bookGrant input { width: 20px; height: 20px; min-height: 20px; margin: 0; padding: 0; flex: none; accent-color: var(--teal); }
+.bookGrant select:disabled { opacity: .55; }
+@media(max-width:420px){ .bookGrant { grid-template-columns: 1fr; gap: 0; } }
 </style>
 </head><body>
 <main>
@@ -230,7 +237,8 @@ const call = inSheet
 let data=null,draft=null,locked=false,lastReadAt=0;
 let refreshInProgress=false;
 document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden && data && !locked && !refreshInProgress && !el('modal').open && Date.now()-lastReadAt>=60000)load();
+  if(!document.hidden && data && !locked && !refreshInProgress &&
+    ((pages && !data.owner) || (!el('modal').open && Date.now()-lastReadAt>=60000)))load();
 });
 function ready(){return Boolean(data)}
 let loadVersion=0, currentView='Overview';
@@ -296,12 +304,13 @@ let loginMode='login';
 function loginScreen(message='',mode='login'){
   loginMode=mode;
   const reset=mode==='reset',forgot=mode==='forgot',signup=mode==='signup';
-  const title=reset?'Choose a new password':forgot?'Reset password':signup?'Set up ledger login':'Sign in';
+  const reviewer=mode==='reviewer';
+  const title=reviewer?'Reviewer or co-editor sign-in':reset?'Choose a new password':forgot?'Reset password':signup?'Set up ledger login':'Sign in';
   const email=reset?'':field('Email','<input id="loginEmail" type="email" autocomplete="username" required>');
   const pass=forgot?'':field('Password','<input id="loginPassword" type="password" autocomplete="'+(reset||signup?'new-password':'current-password')+'" required>');
-  const help=forgot?'We’ll send a reset link to your ledger email.':signup?'Use the email registered for this ledger.':reset?'Choose a password for your ledger account.':'Use your ledger email and password on any device.';
+  const help=reviewer?'Enter your email and the password the ledger owner gave you.':forgot?'We’ll send a reset link to your ledger email.':signup?'Use the email registered for this ledger.':reset?'Choose a password for your ledger account.':'Use your ledger email and password on any device.';
   accessScreen(title,message||help, '<form onsubmit="event.preventDefault();submitLogin()">'+email+pass+'<button class="primary" type="submit">'+(reset?'Save password':forgot?'Send reset email':signup?'Create login':'Sign in')+'</button></form>'+
-    (mode==='login'?'<div class="loginLinks">'+btn('Forgot password', "loginScreen('', 'forgot')")+btn('Set up login', "loginScreen('', 'signup')")+'</div><div class="loginFoot">'+btn('Service status','openServiceStatus()')+'</div>':btn('Back to sign in','loginScreen()')));
+    (mode==='login'?'<div class="loginLinks">'+btn('Reviewer or co-editor sign-in', "loginScreen('', 'reviewer')")+btn('Forgot password', "loginScreen('', 'forgot')")+btn('Set up login', "loginScreen('', 'signup')")+'</div><div class="loginFoot">'+btn('Service status','openServiceStatus()')+'</div>':btn('Back to sign in','loginScreen()')));
   document.body.classList.add('loginPage');
 }
 async function submitLogin(){
@@ -312,11 +321,12 @@ async function submitLogin(){
     if(mode==='forgot'){await ledgerDb.forgot(email);loginScreen('Check your inbox for a password reset link.');return;}
     if(mode==='reset'){await ledgerDb.password(password);history.replaceState(null,'',location.pathname);}
     else if(mode==='signup'){const result=await ledgerDb.signup(email,password);if(!result.session){loginScreen('Check your email to confirm your ledger login.');return;}}
+    else if(mode==='reviewer')await ledgerDb.signInReviewer(email,password);
     else await ledgerDb.signIn(email,password);
     await load();
   }catch(e){el('accessMessage').textContent=e.message;}finally{button.disabled=false;}
 }
-async function signOut(){++loadVersion;await ledgerDb.signOut();resetLedger();loginScreen();}
+async function signOut(){++loadVersion;try{await ledgerDb.signOut();}finally{resetLedger();loginScreen();}}
 async function reconnect(){resetLedger();loginScreen();}
 async function load(initial,fresh=false){
   const version=++loadVersion;
@@ -325,7 +335,7 @@ async function load(initial,fresh=false){
   try{
     if(pages){
       const session=await ledgerDb.session();if(version!==loadVersion)return;
-      if(!session){resetLedger();loginScreen();return;}
+      if(!session){resetLedger();loginScreen('',new URLSearchParams(location.search).has('reviewer')?'reviewer':'login');return;}
       if(new URLSearchParams(location.search).get('reset')==='1'){loginScreen('Enter a new password.','reset');return;}
       document.body.classList.remove('loginPage');
     }
@@ -334,6 +344,9 @@ async function load(initial,fresh=false){
     if(next.loadError)throw Error(next.loadError);
     if(next.connected===false){accessScreen('Open your ledger','Choose your workbook.',connectButtons());return;}
     const selected=el('scope').value;
+    if(data && !data.owner && (JSON.stringify(data.books)!==JSON.stringify(next.books) || JSON.stringify(data.editableBooks)!==JSON.stringify(next.editableBooks))){
+      resetLedger();
+    }
     data=next;
     lastReadAt=Date.now();
     el('access').hidden=true;
@@ -355,6 +368,7 @@ async function load(initial,fresh=false){
     else changeScope();
   }catch(e){
     if(version!==loadVersion)return;
+    if(data && pages && !data.owner){resetLedger();}
     if(!data){
       accessScreen('Couldn’t open your ledger',e.message,btn('Try again','load()',true)+(pages?btn('Sign out','signOut()')+recoveryLink(e):''));
       return;
@@ -414,13 +428,27 @@ function home(){
   el('homeData').innerHTML=sheetWarnings()+balanceCards(income,expense,el('scope').value||'All books')+
     '<section class="entryPanel"><div class="sectionHead compact"><h3>Recent entries</h3><button class="textButton" onclick="journals()">View journal →</button></div>'+entryList(groupEntries(rows).slice(0,5))+'</section>';
 }
+function editableBooks(){return pages ? data.editableBooks || (data.owner?data.books:[]) : data.books;}
+function canEdit(book){return editableBooks().includes(book);}
 function detail(index){
   const row=data.entries[index],lines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
   dialog('Journal entry','<b>'+esc(row.memo)+'</b><p class="sub">'+esc([row.book,displayDate(row.date)].filter(Boolean).join(' · '))+'</p>'+
-    ledgerTable(lines)+'<p class="sub">'+esc(row.by?'Posted by '+row.by:'Entered in Google Sheets')+'<br>'+esc(row.id)+'</p>'+(row.summary?'<p>Original entries are in Ledger Archive in your Google Sheet.</p>':btn(row.sheetDraft?'Review & post sheet entry':'Edit entry','editEntry('+index+')',true)));
+    ledgerTable(lines)+'<p class="sub">'+esc(row.by?'Posted by '+row.by:'Entered in Google Sheets')+'<br>'+esc(row.id)+'</p>'+(row.summary?'<p>Original entries are in Ledger Archive in your Google Sheet.</p>':!canEdit(row.book)?'':btn(row.sheetDraft?'Review & post sheet entry':'Edit entry','editEntry('+index+')',true)+(pages && row.sheetDraft?btn('Abandon draft','confirmAbandon('+index+')'):'')));
+}
+function confirmAbandon(index){
+  const row=data.entries[index];
+  if(!row?.sheetDraft || !canEdit(row.book))return;
+  dialog('Abandon this draft?', '<p><b>'+esc(row.memo)+'</b></p><p>'+esc([row.book,row.id,displayDate(row.date)].join(' · '))+
+    '</p><p>This removes the draft from the journal and reports. Its earlier revisions stay in the archive.</p>'+
+    btn('Keep draft','detail('+index+')')+btn('Abandon draft','abandonDraft('+index+')',true));
+}
+function abandonDraft(index){
+  const row=data.entries[index];
+  write('abandonDraft',[{groupKey:row.groupKey,revision:row.revision}],journals);
 }
 function editEntry(index){
   const row=data.entries[index];
+  if(!canEdit(row.book))return;
   const entryLines=data.entries.filter(r=>(r.groupKey||r.id)===(row.groupKey||row.id));
   const commonReference=entryLines.every(r=>r.reference===row.reference) ? row.reference||'' : '';
   draft={sourceBook:row.book,reference:commonReference,key:crypto.randomUUID(),ledgerId:data.ledgerId,editId:row.id,revision:row.revision,groupKey:row.groupKey,sheetDraft:row.sheetDraft,
@@ -436,8 +464,8 @@ function idPicker(groups){
     posted.map(([line])=>'<option value="'+data.entries.indexOf(line)+'">'+esc(line.id)+' · '+esc(line.memo)+'</option>').join('')+'</select>');
 }
 function journals(){if(!ready())return;const groups=groupEntries(filtered());const drafts=groups.filter(([entry])=>entry.sheetDraft).length;
-  const review=pages&&drafts?'<p class="notice">'+drafts+' balanced '+(drafts===1?'draft needs':'drafts need')+' review before posting.</p>':'';
-  workspace('Journal',review+'<div class="actions">'+btn('New entry',"entryForm()",true)+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(groups))}
+  const review=pages&&drafts?'<p class="notice">'+drafts+' balanced '+(drafts===1?'draft needs':'drafts need')+' review before posting.</p>'+entryList(groups.filter(([row])=>row.sheetDraft)):'';
+  workspace('Journal',review+'<div class="actions">'+((el('scope').value?canEdit(el('scope').value):editableBooks().length)?btn('New entry',"entryForm()",true):'')+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(review?groups.filter(([row])=>!row.sheetDraft):groups))}
 let expenseMonth='';
 function spendingByAccount(entries,month,book) {
   const accounts=new Map();
@@ -491,7 +519,7 @@ function accountsView(chosen){
   const book=chosen||el('scope').value||data.books[0];
   const accounts=chartFor(book);
   workspace('Accounts',field('Book','<select id="chartBook" onchange="accountsView(this.value)">'+options(data.books,book)+'</select>')+
-    btn('Add account','newAccount()')+btn('Download accounts CSV','downloadAccounts()')+
+    (canEdit(book)?btn('Add account','newAccount()'):'')+btn('Download accounts CSV','downloadAccounts()')+
     (accounts.map(a=>'<button class="item" onclick="accountDetail('+data.accounts.indexOf(a)+')"><strong>'+esc(a.code)+' · '+esc(a.name)+'</strong><br><small>'+esc([a.type,a.use,a.role,a.parent?'Parent '+a.parent:''].filter(Boolean).join(' · '))+'</small></button>').join('')||'<p>No accounts in this book yet.</p>'));
 }
 function accountDetail(i){
@@ -505,7 +533,7 @@ function accountDetail(i){
 function acOptions(list,current){return list.map(a=>'<option value="'+esc(a.code)+'" '+(a.code===current?'selected':'')+'>'+esc(a.code)+' · '+esc(a.name)+'</option>').join('')}
 function newAccount(){
   const book=el('chartBook').value;
-  dialog('Add account',field('Book type','<select id="accountBook" onchange="parents()">'+options(data.books,book)+'</select>')+field('Code','<input id="code" inputmode="numeric">')+field('Name','<input id="accountName" maxlength="80">')+field('Classification','<select id="classify" onchange="parents()">'+options(['Asset','Liability','Equity','Income','Expense'])+'</select>')+field('Parent account','<select id="parent"></select>')+field('Use','<select id="use" onchange="parents()">'+options(['Posting','Group'])+'</select>')+field('Cash / bank role','<select id="role"><option value="">None</option>'+options(['Bank','Cash'])+'</select>')+btn('Save account','addAccount()',true));parents();
+  dialog('Add account',field('Book type','<select id="accountBook" onchange="parents()">'+options(editableBooks(),book)+'</select>')+field('Code','<input id="code" inputmode="numeric">')+field('Name','<input id="accountName" maxlength="80">')+field('Classification','<select id="classify" onchange="parents()">'+options(['Asset','Liability','Equity','Income','Expense'])+'</select>')+field('Parent account','<select id="parent"></select>')+field('Use','<select id="use" onchange="parents()">'+options(['Posting','Group'])+'</select>')+field('Cash / bank role','<select id="role"><option value="">None</option>'+options(['Bank','Cash'])+'</select>')+btn('Save account','addAccount()',true));parents();
 }
 function parents(){el('parent').innerHTML='<option value="">No parent</option>'+acOptions(chartFor(el('accountBook').value).filter(a=>a.type===el('classify').value&&a.use==='Group'));el('role').disabled=el('classify').value!=='Asset'||el('use').value!=='Posting';if(el('role').disabled)el('role').value=''}
 async function write(method,args,after){if(locked)return;locked=true;el('err').textContent='Saving…';let result;try{result=await call(method,...args)}catch(e){el('err').textContent=e.message;locked=false;
@@ -516,13 +544,14 @@ function entryForm(keep=false){
   if(!ready())return;
   if(!keep){
     draft={
-      key:crypto.randomUUID(),ledgerId:data.ledgerId,book:el('scope').value||data.books[0]||'',
+      key:crypto.randomUUID(),ledgerId:data.ledgerId,book:canEdit(el('scope').value)?el('scope').value:editableBooks()[0]||'',
       date:data.today,reference:'',memo:'',
       lines:[{code:'1100',debit:'',credit:''},{code:'4100',debit:'',credit:''}]
     };
   }
   const title=draft.sheetDraft?'Post sheet entry':draft.editId?'Edit journal entry':'New journal entry';
-  const books=[...new Set([...data.books,draft.book].filter(Boolean))];
+  const books=editableBooks();
+  if(!books.includes(draft.book))return;
   dialog(title,'<div class="two">'+
     field('Book','<select id="book" onchange="changeEntryBook()">'+options(books,draft.book)+'</select>')+
     field('Date','<input type="date" id="date" value="'+esc(draft.date)+'">')+'</div>'+
@@ -756,8 +785,12 @@ function saveBookTypeFromForm(){
   write('saveBookType',[name,data.ledgerId],settings);
 }
 async function dbSettings(){
+  if(!data.owner){
+    dialog('Settings','<p>'+esc(data.email)+'</p>'+data.books.map(b=>'<p><b>'+esc(b)+'</b> · '+(canEdit(b)?'Co-editor':'View only')+'</p>').join('')+btn('Sign out','signOut()'));
+    return;
+  }
   dialog('Settings',field('App name','<input id="appName" maxlength="60" value="'+esc(data.title)+'">')+
-    (data.owner?btn('Save name','saveName()')+bookSettings():'')+
+    (data.owner?btn('Save name','saveName()')+bookSettings()+btn('People and book access','peopleSettings()'):'')+
     '<section><h3>Supabase status</h3><div id="dbUsage" role="status">Checking…</div></section>'+
     (data.owner?btn('Manage archived entries','cleanupForm()')+btn('Service status','openServiceStatus()'):'')+
     '<p><a class="link" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener">Open Google Sheet archive</a> <a class="link" href="downloads/Personal-Ledger-Live.apk" download>Download Android launcher</a></p><p>'+esc(data.email)+'</p>'+btn('Sign out','signOut()'));
@@ -766,6 +799,64 @@ async function dbSettings(){
     const level=pct>=75?'Red warning':pct>=60?'Warning':'Healthy';
     target.innerHTML='<strong class="'+(pct>=75?'usageRed':pct>=60?'usageAmber':'')+'">'+level+' · '+pct.toFixed(1)+'% used</strong><p>'+Math.round(result.bytes/1048576)+' of '+Math.round(result.limitBytes/1048576)+' MiB database space</p><p>Last verified archive: '+esc(result.lastArchive?new Date(result.lastArchive).toLocaleString():'Awaiting first archive')+'<br>Revisions waiting: '+esc(result.pending)+'</p>';
   }catch(e){target.innerHTML=esc(e.message)+recoveryLink(e);}
+}
+let people=[];
+async function peopleSettings(){
+  if(!data?.owner)return;
+  dialog('People and book access','<p role="status">Loading people…</p>');
+  const panel=el('content').firstElementChild;
+  try{
+    const list=await call('listAccess');
+    if(!panel.isConnected)return;
+    people=list;
+    dialog('People and book access',btn('Add person','personForm(-1)',true)+'<p><a class="link" href="?reviewer=1" target="_blank" rel="noopener">Reviewer sign-in link</a></p>'+
+      people.map((person,i)=>'<button class="item" onclick="personForm('+i+')"><span class="entryText"><strong>'+esc(person.email)+'</strong><small>'+
+      esc(Object.entries(person.books).map(([b,role])=>b+' · '+(role==='editor'?'Co-editor':'View only')).join(' / '))+'</small></span></button>').join(''));
+  }catch(e){if(panel.isConnected)panel.textContent=e.message;}
+}
+function personForm(index){
+  const person=people[index],adding=!person;
+  const bookFields=data.books.map((book,i)=>{
+    const role=person?.books[book],name=esc(book);
+    return '<div class="bookGrant"><label><input type="checkbox" id="includeBook'+i+'" '+(role?'checked':'')+
+      ' onchange="setBookSelected('+i+',this.checked)"> '+name+'</label>'+
+      '<select aria-label="Access for '+name+'" id="grant'+i+'" '+(role?'':'disabled')+'>'+
+      '<option value="viewer">View only</option><option value="editor" '+(role==='editor'?'selected':'')+'>Co-editor</option></select></div>';
+  }).join('');
+  dialog(adding?'Add person':'Manage person','<form id="personForm" onsubmit="event.preventDefault();savePerson('+index+')">'+
+    field('Email','<input id="personEmail" type="email" autocomplete="off" required '+(adding?'':'readonly')+' value="'+esc(person?.email||'')+'">')+
+    field(adding?'Password you assign':'New password (optional)','<input id="personPass" type="password" autocomplete="new-password" minlength="10" '+(adding?'required':'')+'>')+
+    '<p class="sub">Give this person their password and the reviewer sign-in link. They can keep using it until you change or revoke access.</p>'+
+    '<fieldset class="bookGrants"><legend>Book access</legend>'+bookFields+'</fieldset><p class="sub">Both roles can download reports. Co-editors can also add accounts and record or edit entries.</p>'+
+    '<button class="primary" type="submit">Save access</button></form>'+
+    (adding?'':btn('Revoke access','confirmRevoke('+index+')'))+btn('Back','peopleSettings()'));
+}
+function setBookSelected(index,checked){
+  const role=el('grant'+index);
+  role.disabled=!checked;
+  if(!checked)role.value='viewer';
+}
+async function savePerson(index){
+  if(locked)return;
+  const books={},email=el('personEmail').value.trim().toLowerCase(),password=el('personPass').value;
+  data.books.forEach((book,i)=>{if(el('includeBook'+i).checked)books[book]=el('grant'+i).value;});
+  if(!Object.keys(books).length){el('err').textContent='Choose access for at least one book.';return;}
+  const payload={email,books,version:people[index]?.version};
+  locked=true;
+  try{
+    if(password)await ledgerDb.provisionReviewer({...payload,password});
+    else await call('saveAccess',payload);
+    await peopleSettings();
+    el('err').textContent='Access saved.';
+  }catch(e){el('err').textContent=e.message;}finally{locked=false;}
+}
+function confirmRevoke(index){
+  const person=people[index];
+  dialog('Revoke access?','<p>'+esc(person.email)+' will lose access to every book in this ledger.</p>'+
+    btn('Back','personForm('+index+')')+btn('Revoke access','revokePerson('+index+')',true));
+}
+function revokePerson(index){
+  const {email,version}=people[index];write('revokeAccess',[{email,version}],peopleSettings);
 }
 function cleanupForm(){
   dialog('Manage archived entries',field('Book','<select id="cleanBook" onchange="cleanupAccounts()">'+options(data.books,el('scope').value)+'</select>')+
