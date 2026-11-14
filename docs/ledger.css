@@ -173,13 +173,20 @@ tr:last-child td { border-bottom: 0; }
 
 .sessionFrame { position: fixed; left: -8px; top: 0; width: 1px; height: 1px; border: 0; pointer-events: none; }
 
-.loginPage{background:linear-gradient(145deg,#041f17,#064e3b);min-height:100dvh}
-.loginPage main{min-height:100dvh;display:grid;align-content:center;justify-items:center}
-.loginPage .hero,.loginPage footer{display:none}
-.loginPage #access{background:#fff;color:#26382e;width:min(430px,100%);padding:28px;border-radius:16px;box-shadow:0 24px 70px #0004}
-.loginPage #access h2{color:#064e3b;margin-top:0}
-.loginPage #access form{display:grid;gap:14px;margin-bottom:12px}
-.loginPage #access label{display:grid;gap:5px}
-.loginPage #access form input{background:#fff;border:1px solid #cbd5e1;box-shadow:none;min-height:44px}
-.loginPage #access .primary{background:#086347;color:white}
+.loginBrand { display: none; }
+.loginPage { background: radial-gradient(ellipse at top left, #244d40, #10392d 56%, #09271e); }
+.loginPage main { min-height: 100dvh; display: grid; align-content: center; justify-items: center; padding-block: 24px; }
+.loginPage .hero, .loginPage footer { display: none; }
+.loginPage #access { width: min(420px, 100%); margin: 0; padding: clamp(22px, 6vw, 38px); border-radius: 22px; background: var(--face); box-shadow: 0 18px 50px #001e1850; }
+.loginPage .loginBrand { display: block; color: var(--teal); font-size: .86rem; font-weight: 700; margin-bottom: 18px; }
+.loginPage #access h2 { color: var(--ink); margin-bottom: 8px; }
+.loginPage #accessMessage { font-size: .94rem; line-height: 1.5; margin-bottom: 22px; }
+.loginPage #access form { display: grid; gap: 14px; }
+.loginPage #access label { display: grid; gap: 5px; }
+.loginPage #access input { min-height: 46px; font-size: 16px; }
+.loginPage #access .primary { min-height: 46px; margin-top: 4px; }
+.loginLinks { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.loginFoot { border-top: 1px solid var(--line); }
+#accessActions .loginLinks button, #accessActions .loginFoot button { width: auto; padding: 4px 0; min-height: 44px; border: 0; color: var(--teal); background: transparent; box-shadow: none; }
+#accessActions .loginFoot button { font-weight: 500; }
 .usageRed{color:#a62c29}.usageAmber{color:#885700}

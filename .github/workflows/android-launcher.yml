@@ -1,0 +1,24 @@
+name: Build Android launcher
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-launcher/**'
+      - '.github/workflows/android-launcher.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Android launcher
+        run: bash android-launcher/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-launcher
+          path: |
+            android-launcher/build/launcher.apk
+            android-launcher/build/apksigner.jar
+          retention-days: 7
