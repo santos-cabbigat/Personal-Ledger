@@ -8,7 +8,7 @@ const proof='x'.repeat(64);
 await db.query("insert into ledger.settings(workbook,title,archive_key_hash) values('demo','Demo',encode(sha256(convert_to($1,'UTF8')),'hex'))",[proof]);
 const archive=async(a,v={})=>(await db.query("select public.personal_ledger_archive($1,$2,$3) as r",[a,proof,JSON.stringify(v)])).rows[0].r;
 const rpc=async(a,v={})=>(await db.query("select public.personal_ledger($1,$2) as r",[a,JSON.stringify(v)])).rows[0].r;
-const state={email:'test@example.com',owner:true,ledgerId:'demo',title:'Demo',reportBook:'Personal',books:['Personal'],accounts:[{code:'101',name:'Cash',type:'Asset',role:'Bank',use:'Posting'},{code:'502',name:'Food',type:'Expense',use:'Posting'}],entries:[]};
+const state={email:'test@example.com',owner:true,ledgerId:'demo',title:'Demo',reportBook:'Personal',books:['Personal'],accounts:[{code:'502',name:'Expense group',type:'Expense',use:'Group'},{code:'101',name:'Cash',type:'Asset',role:'Bank',use:'Posting'},{code:'502',name:'Food',type:'Expense',use:'Posting'}],entries:[]};
 await verify.rejects(rpc('state'),/access/);
 await verify.rejects(db.query('select public.personal_ledger_archive($1,$2,$3)', ['batch','incorrect credential','{}']),/unauthorized/);
 await archive('import',state);

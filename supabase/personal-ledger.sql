@@ -11,7 +11,7 @@ create table ledger.books (name text primary key);
 create table ledger.accounts (book text not null references ledger.books, code text not null,
   name text not null, type text not null check(type in ('Asset','Expense','Liability','Equity','Income')),
   parent text not null default '', use text not null check(use in ('Posting','Group')), role text not null default '',
-  primary key(book,code));
+  primary key(book,code,use));
 create table ledger.entries (key uuid primary key default gen_random_uuid(), book text not null references ledger.books,
   id text not null, day date not null, memo text not null, lines jsonb not null, poster text not null,
   revision uuid not null default gen_random_uuid(), archived uuid, draft boolean not null default false,
@@ -123,7 +123,7 @@ begin
      select coalesce(sum((l->>'debit')::numeric-(l->>'credit')::numeric) filter(where ac.role='Bank'),0) banknet,
        count(*) filter(where ac.role='Bank') banks,count(*) filter(where ac.role<>'Bank') others,
        bool_and(ac.type='Equity' and ac.name~*'opening balance|beginning balance') filter(where ac.role<>'Bank') qualifies
-     from jsonb_array_elements(e.lines) l join ledger.accounts ac on ac.book=e.book and ac.code=l->>'code'
+     from jsonb_array_elements(e.lines) l join ledger.accounts ac on ac.book=e.book and ac.use='Posting' and ac.code=l->>'code'
    ) t where e.key=any(ids) and t.banks>0 and t.others>0 and t.qualifies group by e.day)
    select d.day,d.cnt,coalesce(o.opening,0) opening,sum(x.dr) dr,sum(x.cr) cr,
      jsonb_agg(jsonb_build_object('code',x.code,'name',x.name,'type',x.type,'debit',x.dr,'credit',x.cr) order by x.code) lines
@@ -145,7 +145,7 @@ $$;
 create function public.personal_ledger(action text,p jsonb default '{}') returns jsonb language plpgsql security definer set search_path='' as $$
 declare cfg ledger.settings%rowtype; e text; value text; n bigint; result jsonb;
 begin
- e:=ledger.actor(action in ('status','preview','compact','renameLedger','saveBookType','saveAccount'));
+ e:=ledger.actor(action in ('preview','compact','renameLedger','saveBookType','saveAccount'));
  select * into cfg from ledger.settings;
  if not coalesce(cfg.initialized,false) then raise exception 'The existing workbook has not finished importing.'; end if;
  case action
