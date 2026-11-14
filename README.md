@@ -8,7 +8,7 @@ GitHub Pages hosts the interface. The personal Supabase project handles password
 
 Choose **Set up login** once with the email registered for this ledger, confirm the email, then sign in. Returning devices reuse their Supabase session. **Journal** records transactions. **Expense** shows the selected month’s spending by book and account, net of credits and refunds.
 
-**Settings** shows database size, the time of the last completed archive, and outstanding revisions. The warning starts at 60% of the configured database allowance and turns red at 75%. If the project is unavailable, the owner can open its Supabase dashboard to check its status and restore it.
+**Settings** shows database size, the time of the last completed archive, and outstanding revisions. The warning starts at 60% of the configured database allowance and turns red at 75%. The sign-in page also has an on-demand **Service status** check. If the project is unavailable, the owner can open its Supabase dashboard to check its status and restore it.
 
 **Settings → Manage archived entries** previews a book and date range, optionally restricted to whole entries touching one account. Confirming replaces eligible journals with a separate balanced summary on every posting date. The summaries retain gross debits and credits by account, posted entry counts, and opening bank funds. This preserves the General Ledger and Trial Balance at dates inside the selected range as well as afterward. Drafts and changes awaiting archive verification remain in the live database. Historical descriptions and references can be read in the Sheet.
 

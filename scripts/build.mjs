@@ -10,7 +10,7 @@ const css=await read('docs/ledger.css');
 const archiveBackend=await read('apps-script/PersonalArchive.gs');
 const live=source.replace(/<link rel="stylesheet" href="ledger\.css(?:\?[^"]*)?">/,()=>'<style>'+css+'</style>')
   .replace(/<script src="google-client\.js(?:\?[^"]*)?"><\/script>/,'')
-  .replace(/<script src="(?:vendor\/supabase|personal-db|demo)\.js"><\/script>/g,'');
+  .replace(/<script src="(?:vendor\/supabase|personal-db|demo)\.js(?:\?[^"]*)?"><\/script>/g,'');
 await write('apps-script/Index.html',live);
 const demoPath='docs/demo.js';
 const demo=(await read(demoPath)).split('// Sequence is shared by both books')[0].trimEnd();

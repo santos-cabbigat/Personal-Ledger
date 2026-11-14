@@ -269,7 +269,20 @@ function resetLedger(){
 }
 function recoveryLink(error){
   if(!/paused|unavailable|failed to fetch|network|offline|temporar/i.test(error.message))return '';
-  return '<p><a class="link" target="_blank" rel="noopener" href="https://supabase.com/dashboard/project/uyyihuvjbrbsombzzvqw">Open personal project to check or resume</a></p>';
+  return btn('Check service status','openServiceStatus()');
+}
+async function openServiceStatus(){
+  dialog('Service status','<p id="serviceResult" role="status">Checking the sign-in service…</p><div class="actions">'+
+    btn('Check again','openServiceStatus()')+'<a class="link" href="https://supabase.com/dashboard/project/uyyihuvjbrbsombzzvqw" target="_blank" rel="noopener">Open personal Supabase project</a></div>');
+  const output=el('serviceResult');
+  const state=await ledgerDb.serviceStatus();
+  const messages={
+    online:'Online. The personal ledger sign-in service is responding.',
+    paused:'Supabase reports that this project is paused. The owner can open the personal project and choose Restore.',
+    unavailable:'The sign-in service is unavailable. The owner can check the project in Supabase.',
+    unreachable:'This device could not reach the sign-in service. Check your connection and try again.'
+  };
+  output.textContent=messages[state];
 }
 let loginMode='login';
 function loginScreen(message='',mode='login'){
@@ -279,7 +292,7 @@ function loginScreen(message='',mode='login'){
   const email=reset?'':field('Email','<input id="loginEmail" type="email" autocomplete="username" required>');
   const pass=forgot?'':field('Password','<input id="loginPassword" type="password" autocomplete="'+(reset||signup?'new-password':'current-password')+'" required>');
   accessScreen(title,message||'Personal Ledger', '<form onsubmit="event.preventDefault();submitLogin()">'+email+pass+'<button class="primary" type="submit">'+(reset?'Save password':forgot?'Send reset email':signup?'Create login':'Sign in')+'</button></form>'+
-    (mode==='login'?btn('Forgot password', "loginScreen('', 'forgot')")+btn('Set up login', "loginScreen('', 'signup')"):btn('Back to sign in','loginScreen()')));
+    (mode==='login'?btn('Forgot password', "loginScreen('', 'forgot')")+btn('Set up login', "loginScreen('', 'signup')")+btn('Service status','openServiceStatus()'):btn('Back to sign in','loginScreen()')));
   document.body.classList.add('loginPage');
 }
 async function submitLogin(){
@@ -292,7 +305,7 @@ async function submitLogin(){
     else if(mode==='signup'){const result=await ledgerDb.signup(email,password);if(!result.session){loginScreen('Check your email to confirm your ledger login.');return;}}
     else await ledgerDb.signIn(email,password);
     await load();
-  }catch(e){el('accessMessage').textContent=e.message;const link=recoveryLink(e);if(link&&!el('accessActions').querySelector('a'))el('accessActions').insertAdjacentHTML('beforeend',link);}finally{button.disabled=false;}
+  }catch(e){el('accessMessage').textContent=e.message;}finally{button.disabled=false;}
 }
 async function signOut(){++loadVersion;await ledgerDb.signOut();resetLedger();loginScreen();}
 async function reconnect(){resetLedger();loginScreen();}
@@ -737,7 +750,7 @@ async function dbSettings(){
   dialog('Settings',field('App name','<input id="appName" maxlength="60" value="'+esc(data.title)+'">')+
     (data.owner?btn('Save name','saveName()')+bookSettings():'')+
     '<section><h3>Supabase status</h3><div id="dbUsage" role="status">Checking…</div></section>'+
-    (data.owner?btn('Manage archived entries','cleanupForm()')+'<p><a class="link" href="https://supabase.com/dashboard/project/uyyihuvjbrbsombzzvqw" target="_blank" rel="noopener">Open personal Supabase project</a></p>':'')+
+    (data.owner?btn('Manage archived entries','cleanupForm()')+btn('Service status','openServiceStatus()'):'')+
     '<p><a class="link" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener">Open Google Sheet archive</a></p><p>'+esc(data.email)+'</p>'+btn('Sign out','signOut()'));
   const target=el('dbUsage');try{
     const result=await call('status'),pct=result.bytes/result.limitBytes*100;

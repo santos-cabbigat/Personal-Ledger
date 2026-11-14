@@ -132,3 +132,21 @@ test('sign-in accepts email and password and reads no financial records before a
   assert.match(nodes.get('accessActions').innerHTML,/type="password"/);
   assert.match(nodes.get('accessActions').innerHTML,/Set up login/);
 });
+
+test('the signed-out status check only contacts the public auth health endpoint and distinguishes connection failures',async()=>{
+  let response,statusChecks=0;
+  const supabase={createClient:()=>({})};
+  const fetch=async(url,options)=>{
+    statusChecks++;
+    assert.equal(new URL(url).pathname,'/auth/v1/health');
+    assert.equal(options.credentials,'omit');
+    if(response instanceof Error)throw response;
+    return response;
+  };
+  const db=vm.runInNewContext(read('docs/personal-db.js')+'\nledgerDb',{supabase,fetch,AbortController,setTimeout,clearTimeout});
+  assert.equal(statusChecks,0);
+  for(const [input,expected] of [
+    [{ok:true,status:200,json:async()=>({version:'v2'})},'online'],
+    [{ok:false,status:540},'paused'],[{ok:false,status:503},'unavailable'],[new Error('network'),'unreachable']
+  ]){response=input;assert.equal(await db.serviceStatus(),expected);}
+});
