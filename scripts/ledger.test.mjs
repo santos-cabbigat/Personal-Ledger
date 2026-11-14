@@ -27,6 +27,7 @@ function fixture() {
       }
     }}}});
   vm.runInContext(source,context);
+  context.archivedWorkbook_=()=>false;
   context.ensureJournalPresentation_=()=>{};
   context.context_=()=>({email:'poster@example.org',sheet:book});
   context.accounts_=()=>accounts;context.rows_=()=>raw;

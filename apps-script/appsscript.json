@@ -4,15 +4,28 @@
   "runtimeVersion": "V8",
   "dependencies": {
     "enabledAdvancedServices": [
-      {"userSymbol": "Drive", "serviceId": "drive", "version": "v3"},
-      {"userSymbol": "Sheets", "serviceId": "sheets", "version": "v4"}
+      {
+        "userSymbol": "Drive",
+        "serviceId": "drive",
+        "version": "v3"
+      },
+      {
+        "userSymbol": "Sheets",
+        "serviceId": "sheets",
+        "version": "v4"
+      }
     ]
   },
   "oauthScopes": [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/script.container.ui"
+    "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp"
   ],
-  "webapp": {"executeAs":"USER_ACCESSING","access":"ANYONE"}
+  "webapp": {
+    "executeAs": "USER_ACCESSING",
+    "access": "ANYONE"
+  }
 }

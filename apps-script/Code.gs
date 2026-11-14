@@ -13,10 +13,26 @@ function initializeLedger() {
 }
 const TYPES = ['Asset','Liability','Equity','Income','Expense'];
 const DEFAULT_BOOKS = ['Personal','Business'];
+const PERSONAL_SITE_='https://santos-cabbigat.github.io/Personal-Ledger/';
+function archivedWorkbook_(sheet){
+  const id=PropertiesService.getScriptProperties().getProperty('PERSONAL_LIVE_WORKBOOK');
+  return Boolean(id && sheet && sheet.getId()===id);
+}
+function liveLedgerLink_(){
+  return HtmlService.createHtmlOutput('<p>This workbook is the daily ledger archive.</p><p><a target="_blank" rel="noopener" href="'+PERSONAL_SITE_+'">Open Personal Ledger</a></p>');
+}
 function onOpen() {
+  if(archivedWorkbook_(SpreadsheetApp.getActiveSpreadsheet())){
+    SpreadsheetApp.getUi().createMenu('Ledger').addItem('Open Personal Ledger','openLedger').addToUi();
+    return;
+  }
   SpreadsheetApp.getUi().createMenu('Ledger').addItem('Initialize ledger','initializeLedger').addItem('Open ledger','openLedger').addItem('Monthly financial report','openMonthlyFinancialReport').addItem('Enable my Sheet posting','enableMySheetPosting').addItem('Post selected journal entry','postSelectedJournalEntry').addToUi();
 }
 function openLedger() {
+  if(archivedWorkbook_(SpreadsheetApp.getActiveSpreadsheet())){
+    SpreadsheetApp.getUi().showSidebar(liveLedgerLink_().setTitle('Personal Ledger'));
+    return;
+  }
   rememberSheetPoster_();
   SpreadsheetApp.getUi().showSidebar(page_(SpreadsheetApp.getActiveSpreadsheet()).setTitle('Ledger'));
 }
@@ -377,7 +393,7 @@ function sheetEditorEmail_(event){
   return '';
 }
 function onEdit(e){
-  if(!e || !e.range)return;
+  if(!e || !e.range || archivedWorkbook_(e.source))return;
   const range=e.range,tab=range.getSheet(),firstCol=range.getColumn(),lastCol=range.getLastColumn();
   if(tab.getName()==='Settings' && firstCol<=6 && lastCol>=6 && range.getLastRow()>=2 && !e.source.getSheetByName('Journal')){
     lock_(()=>syncBookTabs_(e.source));return;
@@ -703,6 +719,7 @@ function cents_(n) {
   return Math.round(Number(n)*100);
 }
 function checkLedger_(sheet,id) {
+  if(archivedWorkbook_(sheet))throw Error('The workbook is archived. Post at '+PERSONAL_SITE_);
   if(id!==sheet.getId()) throw Error('The active ledger changed. Refresh before saving.');
 }
 function saveAccount(input) {
