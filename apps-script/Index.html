@@ -760,7 +760,7 @@ async function dbSettings(){
     (data.owner?btn('Save name','saveName()')+bookSettings():'')+
     '<section><h3>Supabase status</h3><div id="dbUsage" role="status">Checking…</div></section>'+
     (data.owner?btn('Manage archived entries','cleanupForm()')+btn('Service status','openServiceStatus()'):'')+
-    '<p><a class="link" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener">Open Google Sheet archive</a></p><p>'+esc(data.email)+'</p>'+btn('Sign out','signOut()'));
+    '<p><a class="link" href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener">Open Google Sheet archive</a> <a class="link" href="downloads/Personal-Ledger-Live.apk" download>Download Android launcher</a></p><p>'+esc(data.email)+'</p>'+btn('Sign out','signOut()'));
   const target=el('dbUsage');try{
     const result=await call('status'),pct=result.bytes/result.limitBytes*100;
     const level=pct>=75?'Red warning':pct>=60?'Warning':'Healthy';
