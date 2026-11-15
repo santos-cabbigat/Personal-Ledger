@@ -23,12 +23,14 @@ const ledgerDb=(()=>{
    }catch{return 'unreachable';}finally{clearTimeout(timeout);}
  }
  async function session(){return check(await client.auth.getSession()).session;}
- async function signIn(email,password){return check(await client.auth.signInWithPassword({email,password}));}
- async function signInReviewer(email,password){
+ async function passwordSignIn(email,password){return check(await client.auth.signInWithPassword({email,password}));}
+ async function signIn(email,password){
+   email=email.trim().toLowerCase();
    const alias=check(await client.rpc('personal_reviewer_alias',{address:email}));
-   try{return await signIn(alias,password);}
-   catch(error){if(!/invalid login credentials/i.test(error.message))throw error;return signIn(email,password);}
+   try{return await passwordSignIn(alias,password);}
+   catch(error){if(!/invalid login credentials/i.test(error.message))throw error;return passwordSignIn(email,password);}
  }
+ const signInReviewer=signIn; // Existing shared links use the same sign-in flow.
  async function provisionReviewer(payload){
    const {data,error}=await client.functions.invoke('ledger-reviewer',{body:payload});
    if(error){

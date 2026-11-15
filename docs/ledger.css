@@ -193,19 +193,20 @@ tr:last-child td { border-bottom: 0; }
 
 .loginBrand { display: none; }
 .loginPage { background: radial-gradient(ellipse at top left, #244d40, #10392d 56%, #09271e); }
-.loginPage main { min-height: 100dvh; display: grid; align-content: center; justify-items: center; padding-block: 24px; }
+.loginPage main { min-height: 100dvh; display: grid; align-content: center; justify-items: center; padding: 20px 16px; }
 .loginPage .hero, .loginPage footer { display: none; }
-.loginPage #access { width: min(420px, 100%); margin: 0; padding: clamp(22px, 6vw, 38px); border-radius: 22px; background: var(--face); box-shadow: 0 18px 50px #001e1850; }
-.loginPage .loginBrand { display: block; color: var(--teal); font-size: .86rem; font-weight: 700; margin-bottom: 18px; }
-.loginPage #access h2 { color: var(--ink); margin-bottom: 8px; }
-.loginPage #accessMessage { font-size: .94rem; line-height: 1.5; margin-bottom: 22px; }
-.loginPage #access form { display: grid; gap: 14px; }
-.loginPage #access label { display: grid; gap: 5px; }
-.loginPage #access input { min-height: 46px; font-size: 16px; }
-.loginPage #access .primary { min-height: 46px; margin-top: 4px; }
-.loginLinks { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
-.loginFoot { border-top: 1px solid var(--line); }
-#accessActions .loginLinks button, #accessActions .loginFoot button { width: auto; padding: 4px 0; min-height: 44px; border: 0; color: var(--teal); background: transparent; box-shadow: none; }
+.loginPage #access { width: min(380px,100%); margin: 0; padding: 24px; border-radius: 18px; background: var(--face); box-shadow: 0 18px 50px #001e1850; }
+.loginPage .loginBrand { display: flex; align-items: center; gap: 8px; color: var(--teal); font-size: .86rem; font-weight: 700; margin-bottom: 14px; }
+.loginBrand img { display: block; border-radius: 7px; }
+.loginPage #access h2 { color: var(--ink); font-size: 25px; margin-bottom: 18px; }
+.loginPage #accessMessage { font-size: .88rem; line-height: 1.4; margin: -8px 0 14px; }
+.loginPage #access form { display: grid; gap: 12px; }
+.loginPage #access label { display: grid; gap: 5px; margin: 0; }
+.loginPage #access input { min-height: 44px; font-size: 16px; margin-top: 0; }
+.loginPage #access .passwordWrap { margin-top: 0; }
+.loginPage #access .primary { min-height: 44px; margin-top: 4px; }
+.loginLinks { display: flex; justify-content: flex-end; margin-top: 2px; }
+#accessActions .loginLinks button { width: auto; padding: 4px 0; min-height: 34px; border: 0; color: var(--teal); background: transparent; box-shadow: none; font-size: 13px; font-weight: 500; }
 #accessActions .loginFoot button { font-weight: 500; }
 .usageRed{color:#a62c29}.usageAmber{color:#885700}
 .bookGrants { margin: 16px 0; padding: 8px 16px 16px; border: 1px solid var(--line); border-radius: 12px; }
@@ -264,3 +265,9 @@ tr:last-child td { border-bottom: 0; }
   .settingsScreen .body { padding-bottom: max(24px,env(safe-area-inset-bottom)); }
   .settingsScreen form .primary,.settingsScreen .revokePerson { width: 100%; }
 }
+
+.passwordWrap { position: relative; display: block; width: 100%; margin-top: 5px; }
+.passwordWrap input { width: 100%; margin-top: 0; padding-right: 54px; }
+.passwordWrap .passwordEye, #accessActions .passwordEye { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); width: 44px; min-width: 44px; height: 44px; padding: 10px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--teal); box-shadow: none; }
+.passwordEye:focus-visible { outline: 2px solid var(--teal); outline-offset: -3px; }
+.emailPreview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--face); }

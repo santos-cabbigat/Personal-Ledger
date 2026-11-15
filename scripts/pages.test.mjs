@@ -130,7 +130,8 @@ test('sign-in accepts email and password and reads no financial records before a
   assert.equal(reads,0);
   assert.equal(nodes.get('dashboard').hidden,true);
   assert.match(nodes.get('accessActions').innerHTML,/type="password"/);
-  assert.match(nodes.get('accessActions').innerHTML,/Set up login/);
+  assert.doesNotMatch(nodes.get('accessActions').innerHTML,/Set up login|Service status|Reviewer or co-editor sign-in/);
+  assert.match(nodes.get('accessActions').innerHTML,/Forgot password/);
 });
 
 test('the signed-out status check only contacts the public auth health endpoint and distinguishes connection failures',async()=>{

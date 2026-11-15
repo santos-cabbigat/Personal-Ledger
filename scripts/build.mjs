@@ -8,9 +8,11 @@ const session=await read('apps-script/Session.gs');
 const manifest=await read('apps-script/appsscript.json');
 const css=await read('docs/ledger.css');
 const downloads=await read('docs/report-downloads.js');
+const email=await read('docs/access-email.js');
 const archiveBackend=await read('apps-script/PersonalArchive.gs');
 const live=source.replace(/<link rel="(?:icon|apple-touch-icon)"[^>]*>\n/g,'').replace(/<link rel="stylesheet" href="ledger\.css(?:\?[^"]*)?">/,()=>'<style>'+css+'</style>')
   .replace(/<script src="report-downloads\.js(?:\?[^"]*)?"><\/script>/,()=>'<script>'+downloads+'</script>')
+  .replace(/<script src="access-email\.js(?:\?[^"]*)?"><\/script>/,()=>'<script>'+email+'</script>')
   .replace(/<script src="google-client\.js(?:\?[^"]*)?"><\/script>/,'')
   .replace(/<script src="(?:vendor\/supabase|personal-db|demo)\.js(?:\?[^"]*)?"><\/script>/g,'');
 await write('apps-script/Index.html',live);

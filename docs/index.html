@@ -3,12 +3,12 @@
 <meta name="theme-color" content="#f1ecdf"><title>Personal &amp; Business Ledger</title>
 <link rel="icon" type="image/png" sizes="32x32" href="ledger-favicon.png?v=blue1">
 <link rel="apple-touch-icon" href="ledger-icon.png?v=blue1">
-<link rel="stylesheet" href="ledger.css?v=9">
+<link rel="stylesheet" href="ledger.css?v=11">
 </head><body>
 <main>
   <header class="hero"><div class="brand"><div class="brandMark"><img src="https://santos-cabbigat.github.io/Personal-Ledger/ledger-icon.png?v=blue1" alt="" width="45" height="45"></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button id="settingsButton" hidden class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
   <section id="access" class="panel accessPanel" aria-labelledby="accessTitle">
-    <span class="loginBrand" aria-hidden="true">Personal Ledger</span>
+    <span class="loginBrand"><img src="ledger-icon.png?v=blue1" width="28" height="28" alt="">Personal Ledger</span>
     <h2 id="accessTitle">Opening your ledger…</h2>
     <p id="accessMessage" role="status"></p>
     <div id="accessActions"></div>
@@ -24,7 +24,8 @@
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><button type="button" id="settingsBack" aria-label="Back" hidden>‹</button><h2 id="heading" tabindex="-1"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <script src="vendor/supabase.js"></script>
-<script src="personal-db.js?v=3"></script>
+<script src="personal-db.js?v=4"></script>
+<script src="access-email.js?v=1"></script>
 <script src="demo.js"></script><script src="report-downloads.js?v=1"></script><script>
 
 'use strict';
@@ -88,6 +89,7 @@ function accessScreen(title,message='',actions=''){
   el('accessActions').innerHTML=actions;
 }
 function resetLedger(){
+  pendingAccessEmail=null;if(typeof LedgerAccessEmail!=='undefined')LedgerAccessEmail.clear();
   data=null;draft=null;reportExport=null;monthlyExport=null;downloadExport=null;expenseMonth='';reportFilters={kind:'Trial balance',from:'',to:'',basis:'All balanced entries',assetKeys:[]};
   if(el('modal').open)el('modal').close();
   for(const id of ['homeData','work','content','err','status'])el(id).textContent='';
@@ -115,15 +117,14 @@ async function openServiceStatus(fromSettings=false){
 }
 let loginMode='login';
 function loginScreen(message='',mode='login'){
-  loginMode=mode;
-  const reset=mode==='reset',forgot=mode==='forgot',signup=mode==='signup';
-  const reviewer=mode==='reviewer';
-  const title=reviewer?'Reviewer or co-editor sign-in':reset?'Choose a new password':forgot?'Reset password':signup?'Set up ledger login':'Sign in';
-  const email=reset?'':field('Email','<input id="loginEmail" type="email" autocomplete="username" required>');
-  const pass=forgot?'':field('Password','<input id="loginPassword" type="password" autocomplete="'+(reset||signup?'new-password':'current-password')+'" required>');
-  const help=reviewer?'Enter your email and the password the ledger owner gave you.':forgot?'We’ll send a reset link to your ledger email.':signup?'Use the email registered for this ledger.':reset?'Choose a password for your ledger account.':'Use your ledger email and password on any device.';
-  accessScreen(title,message||help, '<form onsubmit="event.preventDefault();submitLogin()">'+email+pass+'<button class="primary" type="submit">'+(reset?'Save password':forgot?'Send reset email':signup?'Create login':'Sign in')+'</button></form>'+
-    (mode==='login'?'<div class="loginLinks">'+btn('Reviewer or co-editor sign-in', "loginScreen('', 'reviewer')")+btn('Forgot password', "loginScreen('', 'forgot')")+btn('Set up login', "loginScreen('', 'signup')")+'</div><div class="loginFoot">'+btn('Service status','openServiceStatus()')+'</div>':btn('Back to sign in','loginScreen()')));
+  mode=['forgot','reset'].includes(mode)?mode:'login';loginMode=mode;
+  const reset=mode==='reset',forgot=mode==='forgot';
+  const title=reset?'New password':forgot?'Reset password':'Sign in';
+  const email=reset?'':field('Email','<input id="loginEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Email address" required>');
+  const pass=forgot?'':field('Password',passwordInput('loginPassword','autocomplete="'+(reset?'new-password':'current-password')+'" placeholder="Password" required'));
+  const help=forgot?'Enter your email to receive a reset link.':reset?'Choose a new password.':'';
+  accessScreen(title,message||help,'<form onsubmit="event.preventDefault();submitLogin()">'+email+pass+'<button class="primary" type="submit">'+(reset?'Save password':forgot?'Send reset link':'Sign in')+'</button></form>'+
+    '<div class="loginLinks">'+(mode==='login'?btn('Forgot password?',"loginScreen('', 'forgot')"):btn('Back to sign in','loginScreen()'))+'</div>');
   document.body.classList.add('loginPage');
 }
 async function submitLogin(){
@@ -133,8 +134,6 @@ async function submitLogin(){
   try{
     if(mode==='forgot'){await ledgerDb.forgot(email);loginScreen('Check your inbox for a password reset link.');return;}
     if(mode==='reset'){await ledgerDb.password(password);history.replaceState(null,'',location.pathname);}
-    else if(mode==='signup'){const result=await ledgerDb.signup(email,password);if(!result.session){loginScreen('Check your email to confirm your ledger login.');return;}}
-    else if(mode==='reviewer')await ledgerDb.signInReviewer(email,password);
     else await ledgerDb.signIn(email,password);
     await load();
   }catch(e){el('accessMessage').textContent=e.message;}finally{button.disabled=false;}
@@ -148,7 +147,7 @@ async function load(initial,fresh=false){
   try{
     if(pages){
       const session=await ledgerDb.session();if(version!==loadVersion)return;
-      if(!session){resetLedger();loginScreen('',new URLSearchParams(location.search).has('reviewer')?'reviewer':'login');return;}
+      if(!session){resetLedger();loginScreen();return;}
       if(new URLSearchParams(location.search).get('reset')==='1'){loginScreen('Enter a new password.','reset');return;}
       document.body.classList.remove('loginPage');
     }
@@ -194,7 +193,8 @@ function connectButtons(){
 }
 function connectDrive(){dialog('Connect Google Drive','<p>Open your own ledger, or create an empty one in My Drive → Personal &amp; Business Ledger.</p>'+btn('Connect',"write('connectPersonalDrive',[])",true));}
 function existingLedgerForm(){dialog('Open existing ledger',field('Link to your ledger spreadsheet','<input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/…">')+btn('Open',"write('openExistingLedger',[el('sheetUrl').value])",true));}
-function dialog(title,html){el('modal').classList.remove('reportClean','settingsScreen','settingsHome');el('settingsBack').hidden=true;el('settingsBack').onclick=null;el('heading').textContent=title;el('content').innerHTML=html;el('err').textContent='';if(!el('modal').open)el('modal').showModal();el('modal').scrollTop=0}
+let pendingAccessEmail=null;
+function dialog(title,html){pendingAccessEmail=null;el('modal').classList.remove('reportClean','settingsScreen','settingsHome');el('settingsBack').hidden=true;el('settingsBack').onclick=null;el('heading').textContent=title;el('content').innerHTML=html;el('err').textContent='';if(!el('modal').open)el('modal').showModal();el('modal').scrollTop=0}
 function closeDialog(){if(!locked)el('modal').close()}
 el('modal').addEventListener('click',event=>{
   if(event.target!==el('modal'))return;
@@ -202,9 +202,49 @@ el('modal').addEventListener('click',event=>{
   if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closeDialog();
 });
 el('modal').addEventListener('cancel',event=>{if(locked)event.preventDefault()});
+el('modal').addEventListener('close',()=>{if(!el('modal').open){pendingAccessEmail=null;el('content').innerHTML='';}});
 function guard(f){try{f()}catch(e){el('err').textContent=e.message}}
 function options(values,current){return values.map(v=>'<option '+(v===current?'selected':'')+'>'+esc(v)+'</option>').join('')}
 function field(name,html){return '<label>'+name+html+'</label>'}
+function passwordInput(id,attrs=''){
+  return '<span class="passwordWrap"><input id="'+id+'" type="password" '+attrs+'><button type="button" class="passwordEye" aria-label="Show password" aria-controls="'+id+'" aria-pressed="false" onclick="togglePassword(\''+id+'\',this)">'+passwordEye(false)+'</button></span>';
+}
+function passwordEye(visible){return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>'+(visible?'<path d="m3 3 18 18"/>':'')+'</svg>';}
+function togglePassword(id,button){
+  const input=el(id),visible=input.type==='password';input.type=visible?'text':'password';
+  button.setAttribute('aria-label',visible?'Hide password':'Show password');button.setAttribute('aria-pressed',String(visible));button.innerHTML=passwordEye(visible);input.focus();
+}
+function accessEmailPreview(details){
+  if(!data?.owner)return;
+  const message=LedgerAccessEmail.compose(details);
+  settingsDialog('Access saved · Email preview','<p class="sub">Review the recipient and login details, then press Send email. The message sends from the Google account you authorize.</p>'+
+    field('To','<input type="email" readonly value="'+esc(message.to)+'">')+
+    (details.password?field('Assigned password',passwordInput('emailPassword','readonly value="'+esc(details.password)+'"')):'<p class="sub">Existing passwords cannot be retrieved. This email will refer to their previously assigned password.</p>')+
+    field('Subject','<input readonly value="'+esc(message.subject)+'">')+
+    '<pre class="emailPreview">'+esc(message.body.replace('Password: '+details.password+'\n','Password: [assigned password shown above]\n'))+'</pre>'+
+    '<p id="emailStatus" role="status">Preparing email connection…</p><div class="actions"><button type="button" class="primary" id="sendAccessEmail" disabled onclick="sendAccessEmail()">Send email</button><button type="button" id="copyAccessEmail" onclick="copyAccessEmail()">Copy email</button></div>',peopleSettings);
+  const pending={details,message,sent:false};pendingAccessEmail=pending;
+  LedgerAccessEmail.prepare().then(()=>{if(pendingAccessEmail===pending){el('sendAccessEmail').disabled=false;el('emailStatus').textContent='Ready to send.';}}).catch(e=>{if(pendingAccessEmail===pending)el('emailStatus').textContent=e.message;});
+}
+async function copyAccessEmail(){
+  if(!pendingAccessEmail)return;
+  try{const m=pendingAccessEmail.message;await navigator.clipboard.writeText('Subject: '+m.subject+'\n\n'+m.body);el('emailStatus').textContent='Email copied, including the assigned password.';}catch{el('emailStatus').textContent='Clipboard access was not available.';}
+}
+async function sendAccessEmail(){
+  const pending=pendingAccessEmail;
+  if(locked||!data?.owner||!pending||pending.sent)return;
+  locked=true;el('sendAccessEmail').disabled=true;el('emailStatus').textContent='Connecting to Google and sending…';
+  try{
+    await LedgerAccessEmail.send(pending.message,pending.details.sender,async()=>{
+      const members=await call('listAccess'),member=members.find(p=>p.email===pending.message.to);
+      if(!member||member.version!==pending.details.version||Object.keys(member.books).length!==Object.keys(pending.details.books).length||
+          !Object.entries(pending.details.books).every(([book,role])=>member.books[book]===role))throw Error('This person’s access changed. Reopen the person and prepare a new email. Nothing was sent.');
+    });
+    pending.sent=true;pending.details.password='';pending.message.body='';el('copyAccessEmail').disabled=true;
+    if(el('emailPassword'))el('emailPassword').value='';
+    el('emailStatus').textContent='Email sent to '+pending.message.to+'.';
+  }catch(e){el('emailStatus').textContent=e.message;el('sendAccessEmail').disabled=false;}finally{locked=false;}
+}
 function btn(label,fn,primary=false){return '<button class="'+(primary?'primary':'')+'" onclick="'+fn+'">'+label+'</button>'}
 function groupEntries(rows){const groups=new Map();rows.forEach(r=>{const key=r.groupKey||r.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r)});return [...groups.values()].reverse()}
 function filtered(){
@@ -679,7 +719,7 @@ async function peopleSettings(){
     if(!panel.isConnected || !el('modal').open)return;
     people=list;
     const actions=settingRow('person','Add person','','onclick="personForm(-1)"')+
-      settingRow('exit','Reviewer sign-in link','','href="?reviewer=1" target="_blank" rel="noopener"',true);
+      settingRow('exit','App sign-in link','','href="./" target="_blank" rel="noopener"',true);
     const members=people.map((person,i)=>settingRow('person',person.email,Object.entries(person.books).map(([b,r])=>b+' · '+(r==='editor'?'Co-editor':'View only')).join(' / '),'onclick="personForm('+i+')"')).join('');
     settingsDialog('People and book access','<div class="settingList">'+actions+'</div>'+
       settingGroup('People',members||'<p class="settingInfo">No people added yet.</p>'),settings);
@@ -694,12 +734,12 @@ function personForm(index){
       '<select aria-label="Access for '+name+'" id="grant'+i+'" '+(role?'':'disabled')+'>'+
       '<option value="viewer">View only</option><option value="editor" '+(role==='editor'?'selected':'')+'>Co-editor</option></select></div>';
   }).join('');
-  settingsDialog(adding?'Add person':'Manage person','<form id="personForm" onsubmit="event.preventDefault();savePerson('+index+')">'+
+  settingsDialog(adding?'Add person':'Manage person','<form id="personForm" onsubmit="event.preventDefault();savePerson('+index+',event.submitter?.dataset.email===\'1\')">'+
     field('Email','<input id="personEmail" type="email" autocomplete="off" required '+(adding?'':'readonly')+' value="'+esc(person?.email||'')+'">')+
-    field(adding?'Password you assign':'New password (optional)','<input id="personPass" type="password" autocomplete="new-password" minlength="10" '+(adding?'required':'')+'>')+
-    '<p class="sub">Give this person their password and the reviewer sign-in link. They can keep using it until you change or revoke access.</p>'+
+    field(adding?'Password you assign':'New password (optional)',passwordInput('personPass','autocomplete="new-password" minlength="10" '+(adding?'required':'')))+
+    '<p class="sub">Save access, or prepare a formal email with the app link and login details. Email is sent only when you press Send email.</p>'+
     '<fieldset class="bookGrants"><legend>Book access</legend>'+bookFields+'</fieldset><p class="sub">Both roles can download reports. Co-editors can also add accounts and record or edit entries.</p>'+
-    '<button class="primary" type="submit">Save access</button></form>'+
+    '<div class="actions"><button type="submit">Save access</button><button class="primary" type="submit" data-email="1">Save &amp; prepare email</button></div></form>'+
     (adding?'':'<button type="button" class="revokePerson" onclick="confirmRevoke('+index+')">Revoke access</button>'),peopleSettings);
 }
 function setBookSelected(index,checked){
@@ -707,7 +747,7 @@ function setBookSelected(index,checked){
   role.disabled=!checked;
   if(!checked)role.value='viewer';
 }
-async function savePerson(index){
+async function savePerson(index,prepareEmail=false){
   if(locked)return;
   const books={},email=el('personEmail').value.trim().toLowerCase(),password=el('personPass').value;
   data.books.forEach((book,i)=>{if(el('includeBook'+i).checked)books[book]=el('grant'+i).value;});
@@ -717,8 +757,12 @@ async function savePerson(index){
   try{
     if(password)await ledgerDb.provisionReviewer({...payload,password});
     else await call('saveAccess',payload);
-    await peopleSettings();
-    el('err').textContent='Access saved.';
+    if(prepareEmail){
+      const members=await call('listAccess'),member=members.find(p=>p.email===email);
+      if(!member)throw Error('Access saved. Reopen the person to prepare their email.');
+      accessEmailPreview({email,password,books,sender:data.email,version:member.version});
+    }
+    else{await peopleSettings();el('err').textContent='Access saved.';}
   }catch(e){el('err').textContent=e.message;}finally{locked=false;}
 }
 function confirmRevoke(index){
