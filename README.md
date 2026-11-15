@@ -16,6 +16,8 @@ In **Settings → People and book access**, the owner can assign an individual e
 
 The Journal lists pending drafts with their IDs and descriptions. Closing the entry leaves it pending. Choose **Abandon draft** in the entry details to exclude it from the live journal and reports while retaining its archived revisions.
 
+The book selector, Refresh and available New / Download actions share one compact row. Download offers CSV and formatted Excel. Every report includes its book, period, entry-status basis and a summary. Journal exports keep each complete entry together with its own total; Excel highlights each entry’s first line. Reports has dedicated downloads for Trial balance, Income and expenses, Balance sheet, General ledger and Fixed assets. The Trial balance carries opening balances into the selected period; the General ledger includes entry IDs and running balances. For Fixed assets, select the asset accounts to include. Bank and cash accounts are excluded from that picker. Monthly financial reports also provide CSV and Excel alongside the image download.
+
 ## Installation for the workbook owner
 
 1. Apply `supabase/personal-ledger.sql` once to the intended personal project, then apply `supabase/book-access.sql` and deploy the `ledger-reviewer` Edge Function. The function uses the project’s built-in server credentials and verifies the owner through the ledger API. Set the Supabase Auth site URL to the Pages address, and allow that address with `?reset=1` for password recovery.

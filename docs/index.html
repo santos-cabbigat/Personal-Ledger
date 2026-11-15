@@ -3,7 +3,7 @@
 <meta name="theme-color" content="#f1ecdf"><title>Personal &amp; Business Ledger</title>
 <link rel="icon" href="ledger-icon.png">
 <link rel="apple-touch-icon" href="ledger-icon.png">
-<link rel="stylesheet" href="ledger.css?v=7">
+<link rel="stylesheet" href="ledger.css?v=8">
 </head><body>
 <main>
   <header class="hero"><div class="brand"><div class="brandMark"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button id="settingsButton" hidden class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
@@ -16,7 +16,7 @@
   <div id="dashboard" hidden>
   <nav id="ledgerNav" class="navRail" aria-label="Ledger navigation"><button type="button" data-view="Overview" onclick="overview()" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button><button type="button" data-view="Journal" onclick="journals()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3h13a1 1 0 0 1 1 1v16H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2zM8 3v17m3-12h5m-5 4h4"/></svg><span>Journal</span></button><button type="button" data-view="Accounts" onclick="accountsView()"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="5" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></svg><span>Accounts</span></button><button type="button" data-view="Expense" onclick="expenses()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3l2 1.5L9 3l3 1.5L15 3l2 1.5L19 3v18l-3-2-4 2-4-2-3 2zM8 9h8m-8 4h6"/></svg><span>Expense</span></button><button type="button" data-view="Reports" onclick="reports()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18M5 16v-4h3v4m3 0V8h3v8m3 0V4h3v12"/></svg><span>Reports</span></button></nav>
   <div class="sectionHead"><div><h2 id="viewTitle">Overview</h2><div class="status" id="status" role="status"></div></div>
-  <div class="filters" id="tools" hidden><select id="scope" aria-label="Filter by book" onchange="changeScope()"><option value="">All books</option></select><button class="iconButton" onclick="load(null,true)"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.1 8a7.5 7.5 0 0 1 12.5-2L20 9M4 15l2.4 3A7.5 7.5 0 0 0 19 16"/></svg> Refresh</button></div></div>
+  <div class="filters compactTools" id="tools" hidden><select id="scope" aria-label="Filter by book" onchange="changeScope()"><option value="">All books</option></select><button type="button" class="iconButton toolIcon" title="Refresh" aria-label="Refresh" onclick="load(null,true)"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.1 8a7.5 7.5 0 0 1 12.5-2L20 9M4 15l2.4 3A7.5 7.5 0 0 0 19 16"/></svg></button><span id="viewActions" class="viewActions"></span></div></div>
   <div id="homeData"></div><section class="workPanel" id="work" hidden></section>
   </div>
   <footer class="sub">
@@ -25,7 +25,7 @@
 <dialog id="modal" aria-labelledby="heading"><header><button type="button" id="settingsBack" aria-label="Back" hidden>‹</button><h2 id="heading" tabindex="-1"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <script src="vendor/supabase.js"></script>
 <script src="personal-db.js?v=3"></script>
-<script src="demo.js"></script><script>
+<script src="demo.js"></script><script src="report-downloads.js?v=1"></script><script>
 
 'use strict';
 const el=id=>document.getElementById(id);
@@ -54,6 +54,15 @@ function setView(name) {
     if(button.dataset.view===name) button.setAttribute('aria-current','page');
     else button.removeAttribute('aria-current');
   }
+  renderViewActions();
+}
+function actionIcon(label,command,path,primary=false){return '<button type="button" class="iconButton toolIcon'+(primary?' primary':'')+'" title="'+esc(label)+'" aria-label="'+esc(label)+'" onclick="'+command+'"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="'+path+'"/></svg></button>';}
+function renderViewActions(){
+  const host=el('viewActions');if(!host)return;
+  let add='';
+  if(data&&currentView==='Journal'&&(el('scope').value?canEdit(el('scope').value):editableBooks().length))add=actionIcon('New entry','entryForm()','M12 5v14M5 12h14',true);
+  if(data&&currentView==='Accounts'&&canEdit(el('scope').value||data.books[0]))add=actionIcon('Add account','newAccount()','M12 5v14M5 12h14',true);
+  host.innerHTML=add+(data&&['Journal','Accounts','Expense','Reports'].includes(currentView)?actionIcon('Download '+(currentView==='Reports'?(el('report')?.value||'Trial balance'):currentView.toLowerCase()),'openDownload()','M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5'):'');
 }
 function overview(){setView('Overview'); if(data) home()}
 function workspace(name,html) {
@@ -79,7 +88,7 @@ function accessScreen(title,message='',actions=''){
   el('accessActions').innerHTML=actions;
 }
 function resetLedger(){
-  data=null;draft=null;reportExport=null;expenseMonth='';
+  data=null;draft=null;reportExport=null;monthlyExport=null;downloadExport=null;expenseMonth='';reportFilters={kind:'Trial balance',from:'',to:'',basis:'All balanced entries',assetKeys:[]};
   if(el('modal').open)el('modal').close();
   for(const id of ['homeData','work','content','err','status'])el(id).textContent='';
   el('scope').innerHTML='<option value="">All books</option>';
@@ -269,7 +278,7 @@ function idPicker(groups){
 }
 function journals(){if(!ready())return;const groups=groupEntries(filtered());const drafts=groups.filter(([entry])=>entry.sheetDraft).length;
   const review=pages&&drafts?'<p class="notice">'+drafts+' balanced '+(drafts===1?'draft needs':'drafts need')+' review before posting.</p>'+entryList(groups.filter(([row])=>row.sheetDraft)):'';
-  workspace('Journal',review+'<div class="actions">'+((el('scope').value?canEdit(el('scope').value):editableBooks().length)?btn('New entry',"entryForm()",true):'')+btn('Download journal CSV','downloadJournal()')+'</div>'+idPicker(groups)+entryList(review?groups.filter(([row])=>!row.sheetDraft):groups))}
+  workspace('Journal',review+idPicker(groups)+entryList(review?groups.filter(([row])=>!row.sheetDraft):groups))}
 let expenseMonth='';
 function spendingByAccount(entries,month,book) {
   const accounts=new Map();
@@ -322,8 +331,8 @@ function accountsView(chosen){
   if(!ready())return;
   const book=chosen||el('scope').value||data.books[0];
   const accounts=chartFor(book);
-  workspace('Accounts',field('Book','<select id="chartBook" onchange="accountsView(this.value)">'+options(data.books,book)+'</select>')+
-    (canEdit(book)?btn('Add account','newAccount()'):'')+btn('Download accounts CSV','downloadAccounts()')+
+  el('scope').value=book;
+  workspace('Accounts','<select id="chartBook" hidden aria-label="Account book">'+options(data.books,book)+'</select>'+
     (accounts.map(a=>'<button class="item" onclick="accountDetail('+data.accounts.indexOf(a)+')"><strong>'+esc(a.code)+' · '+esc(a.name)+'</strong><br><small>'+esc([a.type,a.use,a.role,a.parent?'Parent '+a.parent:''].filter(Boolean).join(' · '))+'</small></button>').join('')||'<p>No accounts in this book yet.</p>'));
 }
 function accountDetail(i){
@@ -424,46 +433,29 @@ function post(){
   });
 }
 function basisPicker(id,change){return field('Entry status','<select id="'+id+'" onchange="'+change+'">'+options(['All balanced entries','Posted only'])+'</select>')}
-function reports(){if(!ready())return;workspace('Reports',btn('Monthly financial report','monthlyReport()',true)+field('Book','<select id="reportBook" onchange="reportData()"><option value="">All books</option>'+options(data.books,el('scope').value)+'</select>')+basisPicker('reportBasis','reportData()')+field('Report','<select id="report" onchange="reportData()">'+options(['Trial balance','Income and expenses','Balance sheet','General ledger'])+'</select>')+'<div class="two">'+field('From','<input type="date" id="from" onchange="reportData()">')+field('Through','<input type="date" id="through" onchange="reportData()">')+'</div><div id="result"></div>'+btn('Download report CSV','downloadReport()'));reportData()}
-let reportExport;
+let reportFilters={kind:'Trial balance',from:'',to:'',basis:'All balanced entries',assetKeys:[]};
+function reports(){
+  if(!ready())return;const f=reportFilters,book=el('scope').value;
+  const assets=data.books.filter(b=>!book||b===book).flatMap(b=>chartFor(b).filter(a=>a.use==='Posting'&&a.type==='Asset'&&!['Bank','Cash'].includes(a.role)).map(a=>({...a,book:b})));
+  const choices='<details id="fixedAssetChoices" class="assetChoices" hidden><summary>Choose fixed asset accounts</summary><p class="sub">Select the accounts that belong in this report, including any accumulated depreciation accounts.</p>'+assets.map(a=>{const key=JSON.stringify([a.book,a.code]);return '<label><input type="checkbox" value="'+esc(key)+'" '+(f.assetKeys.includes(key)?'checked ':'')+'onchange="reportData()">'+esc(a.book+' · '+a.code+' · '+a.name)+'</label>';}).join('')+(assets.length?'':'<p>No eligible asset accounts in this book.</p>')+'</details>';
+  workspace('Reports','<div class="reportTop">'+btn('Monthly financial report','monthlyReport()',true)+'</div><select id="reportBook" hidden aria-label="Report book"><option value="">All books</option>'+options(data.books,book)+'</select><div class="two">'+field('Report','<select id="report" onchange="reportData()">'+options(['Trial balance','Income and expenses','Balance sheet','General ledger','Fixed assets'],f.kind)+'</select>')+field('Entry status','<select id="reportBasis" onchange="reportData()">'+options(['All balanced entries','Posted only'],f.basis)+'</select>')+'</div><div class="two">'+field('From','<input type="date" id="from" value="'+esc(f.from)+'" onchange="reportData()">')+field('Through','<input type="date" id="through" value="'+esc(f.to)+'" onchange="reportData()">')+'</div>'+choices+'<div id="result"></div>');reportData();
+}
+let reportExport,monthlyExport,downloadExport;
 function reportData(){
   const kind=el('report').value,from=el('from').value,to=el('through').value,asOf=kind==='Balance sheet';
   el('from').disabled=asOf;
   reportExport=null;
+  renderViewActions();
+  const assetChoices=el('fixedAssetChoices');if(assetChoices)assetChoices.hidden=kind!=='Fixed assets';
+  const assetKeys=assetChoices?[...assetChoices.querySelectorAll('input:checked')].map(n=>n.value):[];
+  reportFilters={kind,from,to,basis:el('reportBasis').value,assetKeys};
   if(!asOf&&from&&to&&from>to){el('result').textContent='Choose an end date on or after the start date.';return;}
-  const chosen=el('reportBook').value;
-  const postedOnly=el('reportBasis').value==='Posted only';
-  const rows=data.entries.filter(r=>(!postedOnly||!r.sheetDraft) && (!chosen||r.book===chosen)).filter(r=>(asOf||!from||r.date>=from)&&(!to||r.date<=to));
-  let headers,records=[],moneyColumns=[];
-  if(kind==='Income and expenses'||asOf){
-    headers=['Item','Amount (LAK)'];moneyColumns=[1];
-    const inc=-net(rows,'Income'),exp=net(rows,'Expense'),liabilities=-net(rows,'Liability'),equity=-net(rows,'Equity');
-    records=asOf?[['Assets',net(rows,'Asset')],['Liabilities',liabilities],['Equity before earnings',equity],['Accumulated earnings',inc-exp],['Total liabilities and equity',liabilities+equity+inc-exp]]:
-      [['Income',inc],['Expenses',exp],['Net income',inc-exp]];
-  }else if(kind==='General ledger'){
-    headers=['Code','Account','Date','Book','Description','Reference','Debit (LAK)','Credit (LAK)','Status'];moneyColumns=[6,7];
-    for(const book of data.books.filter(b=>!chosen||b===chosen))
-      for(const account of chartFor(book).filter(a=>a.use==='Posting'))
-        for(const line of rows.filter(r=>r.book===book&&r.code===account.code).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id))){
-          records.push([account.code,account.name,displayDate(line.date),book,line.lineMemo||line.memo,line.reference||'',line.debit,line.credit,line.summary?'Archived summary':line.sheetDraft?'Balanced draft':'Posted']);
-        }
-  }else{
-    headers=['Book','Code','Account','Debit (LAK)','Credit (LAK)'];moneyColumns=[3,4];
-    for(const book of data.books.filter(b=>!chosen||b===chosen)){
-      let drTotal=0,crTotal=0;
-      for(const account of chartFor(book).filter(a=>a.use==='Posting')){
-        const cents=rows.filter(r=>r.book===book && r.code===account.code).reduce((sum,r)=>sum+Math.round(r.debit*100)-Math.round(r.credit*100),0);
-        if(!cents)continue;
-        const dr=Math.max(cents,0),cr=Math.max(-cents,0);records.push([book,account.code,account.name,dr/100,cr/100]);drTotal+=dr;crTotal+=cr;
-      }
-      records.push([book,'','Total',drTotal/100,crTotal/100]);
-    }
-  }
-  const scope=[chosen||'All books',asOf?'Beginning':from||'Beginning',to||'All dates',el('reportBasis').value];
-  const html='<div class="table"><table><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr>'+
-    records.map(row=>'<tr>'+row.map((v,i)=>'<td>'+esc(moneyColumns.includes(i)?amount(v):v)+'</td>').join('')+'</tr>').join('')+'</table></div>';
-  el('result').innerHTML='<p class="sub">'+esc(scope.join(' · '))+'</p>'+html;
-  reportExport={name:kind,rows:[[kind],['Book','From','Through','Entry status'],scope,[],headers,...records]};
+  if(kind==='Fixed assets'&&!assetKeys.length){el('result').innerHTML='<p class="notice">Choose your fixed asset accounts above to prepare this report.</p>';return;}
+  reportExport=LedgerDownloads.financial(data,{...reportFilters,book:el('reportBook').value});
+  const m=reportExport,first=new Set(m.groupRows),totals=new Set(m.totalRows);
+  const summary='<section class="downloadSummary"><h3>'+esc(kind)+' summary</h3>'+m.summary.map(([label,value])=>'<div class="rline"><span>'+esc(label)+'</span><strong>'+esc(/\(LAK\)/.test(label)?amount(value):value)+'</strong></div>').join('')+'</section>';
+  const html='<div class="table"><table><thead><tr>'+m.headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+m.records.map((row,r)=>'<tr class="'+(totals.has(r)?'reportTotal':first.has(r)?'reportGroup':'')+'">'+row.map((v,i)=>'<td>'+esc(m.moneyColumns.includes(i)?amount(v):v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  el('result').innerHTML='<p class="sub">'+esc(Object.values(m.scope).join(' · '))+'</p>'+summary+'<div class="actions reportDownloads">'+btn('Download '+kind.toLowerCase()+' CSV','downloadReport()')+btn('Excel · highlighted','downloadReport(\'xlsx\')')+'</div>'+html;
 }
 function makeReportImage({book,periodLabel,asOf,opening,received,spent,income,expense,openingFunds,groups,postedCount,pending,basis}){
   const width=900,pad=52,inner=width-2*pad;
@@ -553,6 +545,8 @@ function monthlyReport(book,month,clean=false,basis){
   const details=[...groups.values()].sort((a,b)=>b.type.localeCompare(a.type)||a.name.localeCompare(b.name)).map(g=>'<h4>'+esc(g.name)+'</h4>'+[...g.accounts].sort((a,b)=>a[0].localeCompare(b[0])).map(([name,c])=>'<div class="rline"><span>'+esc(name)+'</span><b>'+esc(amount(c/100))+'</b></div>').join('')).join('');
   const command='monthlyReport(el(\'monthBook\').value,el(\'monthPeriod\').value';
   const controls='<div class="monthControls two" '+(clean?'hidden':'')+'>'+field('Ledger book','<select id="monthBook" onchange="'+command+')">'+options(data.books,book)+'</select>')+field('Reporting period','<input id="monthPeriod" type="month" value="'+esc(month)+'" onchange="if(this.value)'+command+')">')+field('Entry status','<select id="monthBasis" onchange="'+command+')">'+options(['All balanced entries','Posted only'],basis)+'</select>')+'</div>';
+  monthlyExport=LedgerDownloads.monthly(data,{book,month,basis});
+  const monthlyDownloads=btn('Download monthly report CSV','downloadMonthly()')+btn('Excel · highlighted',"downloadMonthly('xlsx')");
   const sheet='<article class="statement"><div class="statementHead"><small>MONTHLY FINANCIAL REPORT</small><h2>'+esc(book)+'</h2><p>'+esc(periodLabel)+' · Lao kip</p></div>'+
     '<section><h3>Bank balance and activity</h3><div class="closing"><span>Closing bank balance</span><strong>'+esc(amount(opening+received-spent))+'</strong></div><div class="metrics">'+metric('Opening balance',opening)+metric('Bank receipts',received)+metric('Bank payments',spent)+'</div></section>'+
     '<section><h3>Income and expenditure</h3><div class="metrics">'+metric('Total income',income)+metric('Total expenditure',expense)+metric('Surplus / (deficit)',income-expense)+'</div></section>'+
@@ -561,9 +555,9 @@ function monthlyReport(book,month,clean=false,basis){
   if(clean){
     const image=makeReportImage({book,periodLabel,asOf:displayDate(latest),opening,received,spent,income,expense,openingFunds,groups,postedCount,pending,basis});
     const file=(book+'-'+month+'-financial-update.png').replace(/[^a-z0-9._-]/gi,'-');
-    const actions='<div class="actions"><a class="link" download="'+esc(file)+'" href="'+image+'">Save report image</a>'+btn('Show controls',command+',false)')+'</div>';
+    const actions='<div class="actions"><a class="link" download="'+esc(file)+'" href="'+image+'">Save report image</a>'+monthlyDownloads+btn('Show controls',command+',false)')+'</div>';
     dialog('Monthly report',controls+'<img class="statementImage" src="'+image+'" alt="Monthly financial report for '+esc(book)+'. Closing bank balance: '+esc(amount(opening+received-spent))+'">'+actions);
-  }else dialog('Monthly report',controls+sheet+'<div class="actions">'+btn('Screenshot view',command+',true)',true)+'</div>');
+  }else dialog('Monthly report',controls+sheet+'<div class="actions">'+monthlyDownloads+btn('Screenshot view',command+',true)',true)+'</div>');
   el('modal').classList.toggle('reportClean',clean);
 }
 function csv(name,rows){
@@ -576,9 +570,26 @@ function csv(name,rows){
   const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=name+'.csv';
   document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),60000);
 }
-function downloadReport(){if(reportExport)csv(reportExport.name,reportExport.rows);}
-function downloadJournal(){csv('Journal',[['Entry ID','Date','Book','Description','Account code','Account name','Type','Debit (LAK)','Credit (LAK)','Posted by','Reference'],...filtered().map(r=>[r.id,r.date,r.book,r.lineMemo||r.memo,r.code,r.name,r.type,r.debit,r.credit,r.by,r.reference])]);}
-function downloadAccounts(){const book=el('chartBook').value;csv('Accounts - '+book,[['Book','Code','Account name','Classification','Parent code','Use','Cash / bank'],...chartFor(book).map(a=>[book,a.code,a.name,a.type,a.parent,a.use,a.role])]);}
+function saveReport(model,format='csv'){
+  if(!data||!model)return;
+  const name=[model.name,model.scope.book,model.scope.month||[model.scope.from,model.scope.to].filter(Boolean).join('-')].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g,'-');
+  if(format==='csv')return csv(name,LedgerDownloads.rows(model));
+  const url=URL.createObjectURL(LedgerDownloads.xlsx(model)),link=document.createElement('a');link.href=url;link.download=name+'.xlsx';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+function openDownload(){
+  if(!ready())return;
+  if(currentView==='Reports')downloadExport=reportExport;
+  else if(currentView==='Journal')downloadExport=LedgerDownloads.journal(filtered(),{book:el('scope').value||'All books'});
+  else if(currentView==='Accounts')downloadExport=LedgerDownloads.accounts(data,el('chartBook').value);
+  else if(currentView==='Expense')downloadExport=LedgerDownloads.expense(data.entries,{book:el('scope').value,month:expenseMonth});
+  else return;
+  if(!downloadExport){el('status').textContent='Choose valid report filters before downloading.';return;}
+  const m=downloadExport;dialog('Download '+m.name.toLowerCase(),'<p class="sub">'+esc(Object.values(m.scope).join(' · '))+'</p><p>Every download includes a summary. Excel also highlights each group’s first line and its totals.</p><div class="downloadChoices">'+btn('Download '+m.name.toLowerCase()+' CSV',"saveReport(downloadExport,'csv')")+btn('Download formatted Excel',"saveReport(downloadExport,'xlsx')",true)+'</div>');
+}
+function downloadReport(format='csv'){saveReport(reportExport,format);}
+function downloadJournal(format='csv'){saveReport(LedgerDownloads.journal(filtered(),{book:el('scope').value||'All books'}),format);}
+function downloadAccounts(format='csv'){saveReport(LedgerDownloads.accounts(data,el('chartBook').value),format);}
+function downloadMonthly(format='csv'){saveReport(monthlyExport,format);}
 function bookSettings(){
   return field('Book types','<span class="sub">'+esc(data.books.join(' · '))+'</span><input id="newBookType" maxlength="80" placeholder="New book name">')+
     btn('Add book type','saveBookTypeFromForm()');
