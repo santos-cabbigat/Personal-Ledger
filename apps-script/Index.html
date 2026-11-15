@@ -25,7 +25,7 @@ header,.row,.sectionHead { justify-content: space-between; gap: 12px; }
 .brandMark,.entryIcon { justify-content: center; flex-shrink: 0; }
 .brandMark { width: 45px; height: 45px; border-radius: 14px; color: var(--teal); background: var(--face); box-shadow: var(--raised); border: 1px solid #fff9e9; }
 svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.brandMark svg { width: 24px; height: 24px; }
+.brandMark img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 h1,h2,h3,h4,p { margin-top: 0; }
 h1 { font-size: clamp(19px,2.4vw,29px); line-height: 1.16; letter-spacing: -.047em; margin: 0; overflow-wrap: anywhere; }
 h2 { font-size: clamp(21px,2.6vw,32px); letter-spacing: -.045em; line-height: 1.2; margin: 0; }
@@ -270,7 +270,7 @@ tr:last-child td { border-bottom: 0; }
 </style>
 </head><body>
 <main>
-  <header class="hero"><div class="brand"><div class="brandMark"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4.5c3.5-1 6.5-.6 9 1.4 2.5-2 5.5-2.4 9-1.4v15c-3.6-.9-6.5-.5-9 1.2-2.5-1.7-5.4-2.1-9-1.2zM12 6v14M6 8.4l3 .5M15 8.9l3-.5"/></svg></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button id="settingsButton" hidden class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
+  <header class="hero"><div class="brand"><div class="brandMark"><img src="https://santos-cabbigat.github.io/Personal-Ledger/ledger-icon.png?v=blue1" alt="" width="45" height="45"></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button id="settingsButton" hidden class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
   <section id="access" class="panel accessPanel" aria-labelledby="accessTitle">
     <span class="loginBrand" aria-hidden="true">Personal Ledger</span>
     <h2 id="accessTitle">Opening your ledger…</h2>
@@ -982,7 +982,7 @@ function dbSettings(){
     settingRow('sheet','Open Google Sheet archive','',preview?'disabled':'href="https://docs.google.com/spreadsheets/d/'+encodeURIComponent(data.ledgerId)+'/edit" target="_blank" rel="noopener"',!preview)):'';
   const device=manage?settingGroup('App and device',
     settingRow('status','Service status','',preview?'disabled':'onclick="openServiceStatus(true)"')+
-    settingRow('download','Download Android launcher','','href="downloads/Personal-Ledger-Live.apk" download',true)):'';
+    settingRow('download','Download Android launcher','','href="downloads/Personal-Ledger-Live.apk?v=1.1" download',true)):'';
   const account=settingGroup('Account','<div class="settingInfo"><small>Signed in as</small><strong>'+esc(preview?'Preview user':data.email)+'</strong></div>'+
     settingRow('exit','Sign out','',preview?'disabled':'onclick="signOut()"'));
   settingsDialog('Settings','<div class="settingsGrid"><div>'+ledger+archive+'</div><div>'+device+account+'</div></div>'+

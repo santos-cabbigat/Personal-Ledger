@@ -22,7 +22,7 @@ header,.row,.sectionHead { justify-content: space-between; gap: 12px; }
 .brandMark,.entryIcon { justify-content: center; flex-shrink: 0; }
 .brandMark { width: 45px; height: 45px; border-radius: 14px; color: var(--teal); background: var(--face); box-shadow: var(--raised); border: 1px solid #fff9e9; }
 svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.brandMark svg { width: 24px; height: 24px; }
+.brandMark img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 h1,h2,h3,h4,p { margin-top: 0; }
 h1 { font-size: clamp(19px,2.4vw,29px); line-height: 1.16; letter-spacing: -.047em; margin: 0; overflow-wrap: anywhere; }
 h2 { font-size: clamp(21px,2.6vw,32px); letter-spacing: -.045em; line-height: 1.2; margin: 0; }
