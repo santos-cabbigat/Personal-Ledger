@@ -125,7 +125,7 @@ function validTabName_(name){
 function formatBookJournal_(sheet,tab,fresh){
   const settings=sheet.getSheetByName('Settings'),n=tab.getMaxRows()-1;
   if(fresh){
-    tab.getRange(1,1,1,BOOK_TAB_HEADERS.length).setValues([BOOK_TAB_HEADERS]).setFontWeight('bold').setBackground('#254566').setFontColor('#ffffff');
+    tab.getRange(1,1,1,BOOK_TAB_HEADERS.length).setValues([BOOK_TAB_HEADERS]).setFontWeight('bold').setBackground('#075c58').setFontColor('#ffffff');
     tab.setFrozenRows(1);
     tab.setColumnWidth(1,126);tab.setColumnWidth(2,110);tab.setColumnWidth(3,175);tab.setColumnWidth(5,180);tab.setColumnWidth(7,255);
     tab.getRange(2,2,n,1).setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
@@ -140,7 +140,7 @@ function formatBookJournal_(sheet,tab,fresh){
     tab.getRange(2,4,n,1).setFormulas(formulas.map(row=>[row[0]]));
     tab.getRange(2,6,n,1).setFormulas(formulas.map(row=>[row[1]]));
   }
-  tab.getRange('A1:O1').setBackground('#191e38').setFontColor('#f5f2ff').setFontWeight('bold');
+  tab.getRange('A1:O1').setBackground('#10392d').setFontColor('#fffdf4').setFontWeight('bold');
   tab.getRange('B2:B').setNumberFormat('dd-mmm-yyyy');
   tab.getRange('A1').setNote('Choose an account to start an entry. The same ID continues until the entry balances.');
   tab.getRange('R1').setValue('Draft running balance');
@@ -154,7 +154,7 @@ function formatBookJournal_(sheet,tab,fresh){
   const ranges=[tab.getRange('A2:O')];
   const rule=(formula,color)=>SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(formula).setBackground(color).setRanges(ranges);
   const others=tab.getConditionalFormatRules().filter(r=>!String(r.getBooleanCondition()?.getCriteriaValues()[0]||'').includes('ROW()=2'));
-  tab.setConditionalFormatRules([rule(starts,'#e8e1fa').setBold(true).build(),rule(next,'#d4f4f3').build(),...others]);
+  tab.setConditionalFormatRules([rule(starts,'#e0efe8').setBold(true).build(),rule(next,'#edf4ed').build(),...others]);
 }
 function syncBookTabs_(sheet){
   const known=bookNames_(sheet);

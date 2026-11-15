@@ -51,7 +51,7 @@ function installBookReports_(sheet,initialBook,temporary){
         ['3100','Temporary opening balance','Equity','','Posting',book,'']]);
     }
   }
-  chart.getRange('A1:G1').setBackground('#191e38').setFontColor('#f5f2ff').setFontWeight('bold');
+  chart.getRange('A1:G1').setBackground('#10392d').setFontColor('#fffdf4').setFontWeight('bold');
   chart.setColumnWidth(6,140);chart.setColumnWidth(7,105);
   chart.getRange('F2:F').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInRange(settings.getRange('F2:F'),true).setAllowInvalid(false).build());
   chart.getRange('G2:G').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['Bank','Cash'],true).setAllowInvalid(false).build());
@@ -94,7 +94,7 @@ function refreshReportSource_(sheet){
 }
 function reportTable_(tab,headers,widths){
   tab.setHiddenGridlines(true).setFrozenRows(1);
-  tab.getRange(1,1,1,headers.length).setValues([headers]).setBackground('#191e38').setFontColor('#ffffff').setFontWeight('bold').setVerticalAlignment('middle');
+  tab.getRange(1,1,1,headers.length).setValues([headers]).setBackground('#10392d').setFontColor('#ffffff').setFontWeight('bold').setVerticalAlignment('middle');
   tab.setRowHeight(1,36);
   widths.forEach((w,i)=>tab.setColumnWidth(i+1,w));
 }
@@ -112,13 +112,13 @@ function buildLedgerViews_(sheet){
   // Group by book and account before splitting the net into debit and credit balances.
   trial.getRange('A2').setFormula('=IFNA(LET(keys,UNIQUE(FILTER('+gl+'A2:D,'+gl+'A2:A<>"")),books,CHOOSECOLS(keys,1),codes,CHOOSECOLS(keys,2),nets,MAP(books,codes,LAMBDA(bk,ac,ROUND(SUMIFS('+gl+'I2:I,'+gl+'A2:A,bk,'+gl+'B2:B,ac)-SUMIFS('+gl+'J2:J,'+gl+'A2:A,bk,'+gl+'B2:B,ac),2))),HSTACK(keys,ARRAYFORMULA(IF(nets>0,nets,0)),ARRAYFORMULA(IF(nets<0,-nets,0)))),"")');
   trial.getRange('E2:F').setNumberFormat('#,##0.##');
-  trial.getRange('H1:J1').setValues([['Book totals','Debit (LAK)','Credit (LAK)']]).setBackground('#483870').setFontColor('#ffffff').setFontWeight('bold');
+  trial.getRange('H1:J1').setValues([['Book totals','Debit (LAK)','Credit (LAK)']]).setBackground('#075c58').setFontColor('#ffffff').setFontWeight('bold');
   trial.getRange('H2').setFormula('=IFNA(LET(books,FILTER(Settings!F2:F,Settings!F2:F<>""),HSTACK(books,MAP(books,LAMBDA(bk,SUMIF(A2:A,bk,E2:E))),MAP(books,LAMBDA(bk,SUMIF(A2:A,bk,F2:F))))),"")');
   trial.getRange('I2:J').setNumberFormat('#,##0.##');trial.setColumnWidths(8,3,135);
 }
 function buildMonthSheet_(sheet,initialBook){
   const tab=sheet.getSheetByName('Monthly Report'),source="'Report Data'!";
-  const first=!tab.getRange('A1').getValue(),navy='#191e38',ink='#211f3d',violet='#503b78',pale='#eee8fa',aqua='#bfece6';
+  const first=!tab.getRange('A1').getValue(),navy='#10392d',ink='#282d28',violet='#075c58',pale='#e0efe8',aqua='#cfe1d2';
   tab.setHiddenGridlines(true);tab.setTabColor(violet);
   tab.setColumnWidth(1,148);tab.setColumnWidth(2,220);tab.setColumnWidth(3,150);tab.setColumnWidth(4,178);
   tab.getRange('A1:D18').setFontFamily('Arial').setFontColor(ink).setVerticalAlignment('middle');
@@ -139,7 +139,7 @@ function buildMonthSheet_(sheet,initialBook){
   tab.setRowHeight(5,42);
   band('A6:D6','BANK BALANCE AND ACTIVITY',navy);
   tab.getRange('A7:D7').setValues([['Opening balance','Bank receipts','Bank payments','Closing bank balance']]).setFontColor(violet).setFontWeight('bold');
-  tab.getRange('A8:D8').setFormulas([['='+sum('I','prior','M','Bank')+'-'+sum('J','prior','M','Bank'),'='+sum('I','month','M','Bank'),'='+sum('J','month','M','Bank'),'=A8+B8-C8']]).setBackground('#e9f6f4').setFontSize(15).setFontWeight('bold');tab.getRange('D8').setBackground(aqua);tab.setRowHeight(8,39);
+  tab.getRange('A8:D8').setFormulas([['='+sum('I','prior','M','Bank')+'-'+sum('J','prior','M','Bank'),'='+sum('I','month','M','Bank'),'='+sum('J','month','M','Bank'),'=A8+B8-C8']]).setBackground('#f1ecdf').setFontSize(15).setFontWeight('bold');tab.getRange('D8').setBackground(aqua);tab.setRowHeight(8,39);
   band('A10:D10','INCOME AND EXPENDITURE',navy);
   tab.getRange('A11:D11').setValues([['Total income','Total expenditure','Surplus / (deficit)','Journal entries']]).setFontColor(violet).setFontWeight('bold');
   const count='COUNTUNIQUEIFS('+source+'F2:F,'+source+'A2:A,$A$4,'+source+'E2:E,">"&EOMONTH($C$4,-1),'+source+'E2:E,"<="&EOMONTH($C$4,0),'+source+'F2:F,"<>",'+source+'N2:N,';
