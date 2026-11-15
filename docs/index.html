@@ -3,7 +3,7 @@
 <meta name="theme-color" content="#f1ecdf"><title>Personal &amp; Business Ledger</title>
 <link rel="icon" type="image/png" sizes="32x32" href="ledger-favicon.png?v=forest1">
 <link rel="apple-touch-icon" href="ledger-icon.png?v=forest1">
-<link rel="stylesheet" href="ledger.css?v=11">
+<link rel="stylesheet" href="ledger.css?v=12">
 </head><body>
 <main>
   <header class="hero"><div class="brand"><div class="brandMark"><img src="https://santos-cabbigat.github.io/Personal-Ledger/ledger-icon.png?v=forest1" alt="" width="45" height="45"></div><h1 id="title">Personal &amp; Business Ledger</h1></div><button id="settingsButton" hidden class="gear" aria-label="Settings" onclick="settings()"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m10 3 .5-1h3l.5 2 2 .9 1.9-.6 1.7 2.5-1.2 1.6.5 2.1 1.8 1v2.7l-2 .7-.9 2 1 1.7-2.4 2-1.7-.9-2 .5-.8 1.8h-3l-.6-2-2-.7-1.7.9-2-2.3.9-1.7-.6-2L2 13v-2.6l2-.8.8-2-1-1.7L6.2 4l1.8.9 2-.8z"/><circle cx="12" cy="12" r="3"/></svg></button></header>
@@ -25,7 +25,7 @@
 <dialog id="modal" aria-labelledby="heading"><header><button type="button" id="settingsBack" aria-label="Back" hidden>‹</button><h2 id="heading" tabindex="-1"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <script src="vendor/supabase.js"></script>
 <script src="personal-db.js?v=4"></script>
-<script src="access-email.js?v=1"></script>
+<script src="access-email.js?v=2"></script>
 <script src="demo.js"></script><script src="report-downloads.js?v=1"></script><script>
 
 'use strict';
@@ -217,33 +217,39 @@ function togglePassword(id,button){
 function accessEmailPreview(details){
   if(!data?.owner)return;
   const message=LedgerAccessEmail.compose(details);
-  settingsDialog('Access saved · Email preview','<p class="sub">Review the recipient and login details, then press Send email. The message sends from the Google account you authorize.</p>'+
+  settingsDialog('Access saved · Email preview','<p class="sub">Edit the subject or message below, then press Send email. Edits apply to this email. The message sends from your authorized Google account.</p>'+
     field('To','<input type="email" readonly value="'+esc(message.to)+'">')+
     (details.password?field('Assigned password',passwordInput('emailPassword','readonly value="'+esc(details.password)+'"')):'<p class="sub">Existing passwords cannot be retrieved. This email will refer to their previously assigned password.</p>')+
-    field('Subject','<input readonly value="'+esc(message.subject)+'">')+
-    '<pre class="emailPreview">'+esc(message.body.replace('Password: '+details.password+'\n','Password: [assigned password shown above]\n'))+'</pre>'+
+    field('Subject','<input id="accessEmailSubject" maxlength="180" value="'+esc(message.subject)+'">')+
+    field('Message','<textarea id="accessEmailBody" class="emailPreview" rows="16" maxlength="20000" spellcheck="true">'+esc(message.body)+'</textarea>')+
     '<p id="emailStatus" role="status">Preparing email connection…</p><div class="actions"><button type="button" class="primary" id="sendAccessEmail" disabled onclick="sendAccessEmail()">Send email</button><button type="button" id="copyAccessEmail" onclick="copyAccessEmail()">Copy email</button></div>',peopleSettings);
   const pending={details,message,sent:false};pendingAccessEmail=pending;
   LedgerAccessEmail.prepare().then(()=>{if(pendingAccessEmail===pending){el('sendAccessEmail').disabled=false;el('emailStatus').textContent='Ready to send.';}}).catch(e=>{if(pendingAccessEmail===pending)el('emailStatus').textContent=e.message;});
 }
+function editedAccessEmail(){
+  const message={...pendingAccessEmail.message,subject:el('accessEmailSubject').value.trim(),body:el('accessEmailBody').value};
+  if(!message.subject||!message.body.trim())throw Error('Enter an email subject and message.');
+  return message;
+}
 async function copyAccessEmail(){
-  if(!pendingAccessEmail)return;
-  try{const m=pendingAccessEmail.message;await navigator.clipboard.writeText('Subject: '+m.subject+'\n\n'+m.body);el('emailStatus').textContent='Email copied, including the assigned password.';}catch{el('emailStatus').textContent='Clipboard access was not available.';}
+  if(locked||!pendingAccessEmail||pendingAccessEmail.sent)return;
+  try{const m=editedAccessEmail();await navigator.clipboard.writeText('Subject: '+m.subject+'\n\n'+m.body);el('emailStatus').textContent='Your edited email was copied.';}catch(e){el('emailStatus').textContent=e.message||'Clipboard access was not available.';}
 }
 async function sendAccessEmail(){
   const pending=pendingAccessEmail;
   if(locked||!data?.owner||!pending||pending.sent)return;
-  locked=true;el('sendAccessEmail').disabled=true;el('emailStatus').textContent='Connecting to Google and sending…';
+  let message;try{message=editedAccessEmail();}catch(e){el('emailStatus').textContent=e.message;return;}
+  locked=true;el('accessEmailSubject').readOnly=true;el('accessEmailBody').readOnly=true;el('sendAccessEmail').disabled=true;el('emailStatus').textContent='Connecting to Google and sending…';
   try{
-    await LedgerAccessEmail.send(pending.message,pending.details.sender,async()=>{
+    await LedgerAccessEmail.send(message,pending.details.sender,async()=>{
       const members=await call('listAccess'),member=members.find(p=>p.email===pending.message.to);
       if(!member||member.version!==pending.details.version||Object.keys(member.books).length!==Object.keys(pending.details.books).length||
           !Object.entries(pending.details.books).every(([book,role])=>member.books[book]===role))throw Error('This person’s access changed. Reopen the person and prepare a new email. Nothing was sent.');
     });
     pending.sent=true;pending.details.password='';pending.message.body='';el('copyAccessEmail').disabled=true;
-    if(el('emailPassword'))el('emailPassword').value='';
+    if(el('emailPassword'))el('emailPassword').value='';el('accessEmailBody').value='';
     el('emailStatus').textContent='Email sent to '+pending.message.to+'.';
-  }catch(e){el('emailStatus').textContent=e.message;el('sendAccessEmail').disabled=false;}finally{locked=false;}
+  }catch(e){el('emailStatus').textContent=e.message;el('sendAccessEmail').disabled=false;el('accessEmailSubject').readOnly=false;el('accessEmailBody').readOnly=false;}finally{locked=false;}
 }
 function btn(label,fn,primary=false){return '<button class="'+(primary?'primary':'')+'" onclick="'+fn+'">'+label+'</button>'}
 function groupEntries(rows){const groups=new Map();rows.forEach(r=>{const key=r.groupKey||r.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r)});return [...groups.values()].reverse()}

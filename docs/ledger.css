@@ -270,4 +270,4 @@ tr:last-child td { border-bottom: 0; }
 .passwordWrap input { width: 100%; margin-top: 0; padding-right: 54px; }
 .passwordWrap .passwordEye, #accessActions .passwordEye { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); width: 44px; min-width: 44px; height: 44px; padding: 10px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--teal); box-shadow: none; }
 .passwordEye:focus-visible { outline: 2px solid var(--teal); outline-offset: -3px; }
-.emailPreview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--face); }
+.emailPreview { display: block; width: 100%; min-height: 300px; max-height: 60dvh; resize: vertical; white-space: pre-wrap; overflow-wrap: anywhere; font: 15px/1.5 Inter, "Segoe UI", Arial, sans-serif; font-weight: 400; color: var(--ink); padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--face); margin-top: 5px; }

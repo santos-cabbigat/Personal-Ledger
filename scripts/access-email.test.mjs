@@ -51,7 +51,7 @@ function mailEnv({failure,validateError,hold=false}={}){
 }
 test('formal invitation contains the sign-in link, exact credentials and book permissions; header injection is rejected',()=>{
  const e=mailEnv(),m=e.api.compose(e.details);
- assert.equal(m.to,e.details.email);assert.match(m.body,/Dear Ledger User,/);assert.ok(m.body.includes(e.details.password));assert.match(m.body,/https:\/\/santos-cabbigat.github.io\/Personal-Ledger\//);assert.match(m.body,/Business: Co-editor/);assert.match(m.body,/Personal: View only/);
+ assert.equal(m.to,e.details.email);assert.ok(m.body.endsWith('Kind regards,\nSantos Cabbigat'));assert.ok(!m.body.includes(e.details.sender));assert.match(m.body,/Dear Ledger User,/);assert.ok(m.body.includes(e.details.password));assert.match(m.body,/https:\/\/santos-cabbigat.github.io\/Personal-Ledger\//);assert.match(m.body,/Business: Co-editor/);assert.match(m.body,/Personal: View only/);
  assert.throws(()=>e.api.compose({...e.details,email:'a@example.com\r\nBcc:other@example.com'}));
 });
 test('preparation sends nothing; one deliberate send authorizes Google and transmits the complete UTF-8 message',async()=>{
@@ -59,7 +59,7 @@ test('preparation sends nothing; one deliberate send authorizes Google and trans
  assert.equal(await e.api.send(e.api.compose(e.details),e.details.sender,e.validate),'message-1');assert.equal(e.consent,1);
  const sent=e.calls.find(c=>c.url.includes('/messages/send'));assert.equal(sent.opts.credentials,'omit');
  const mime=Buffer.from(JSON.parse(sent.opts.body).raw,'base64url').toString('utf8');
- assert.match(mime,/To: reviewer@example.com/);
+ assert.match(mime,/To: reviewer@example.com/);assert.ok(mime.includes(Buffer.from('Santos Cabbigat').toString('base64')));assert.match(mime,/<owner@example.com>/);
  const body=Buffer.from(mime.split('\r\n\r\n')[1].replace(/\r\n/g,''),'base64').toString('utf8');assert.equal(body,e.api.compose(e.details).body);
 });
 test('revoked access prevents sending and disabled Gmail produces an honest error',async()=>{
@@ -82,4 +82,22 @@ test('one sign-in method accepts issued reviewer logins and the main owner login
  const attempts=[];
  const api=vm.runInNewContext(read('docs/personal-db.js')+'\nledgerDb',{supabase:{createClient:()=>({rpc:async()=>({data:'opaque@reviewer.invalid'}),auth:{signInWithPassword:async p=>{attempts.push(p);return {error:{message:'Network unavailable'}};}}})}});
  await assert.rejects(api.signIn('person@example.com','test'),/Network unavailable/);assert.equal(attempts.length,1);
+});
+
+test('the sender can edit the default subject and message, and both Copy and Send use those exact edits',async()=>{
+ const {context,node,backend}=page(),mail=mailEnv();let copied,sent;
+ context.LedgerAccessEmail={compose:mail.api.compose,prepare:async()=>{},send:async(m,s,validate)=>{await validate();sent={...m};return 'test-message';}};
+ context.navigator={clipboard:{writeText:async text=>{copied=text;}}};
+ vm.runInContext("data={owner:true,email:'owner@example.com'}",context);
+ backend.call=async()=>[{email:mail.details.email,books:mail.details.books,version:'v1'}];
+ context.accessEmailPreview({...mail.details,version:'v1'});
+ assert.match(node('content').innerHTML,/<input id="accessEmailSubject"/);
+ assert.match(node('content').innerHTML,/<textarea id="accessEmailBody"/);
+ assert.doesNotMatch(node('content').innerHTML,/<pre class="emailPreview"/);
+ node('accessEmailSubject').value='Access invitation and additional instructions';
+ node('accessEmailBody').value=mail.api.compose(mail.details).body+'\n\nPlease review the November entries before Friday.';
+ const body=node('accessEmailBody').value;
+ await context.copyAccessEmail();assert.equal(copied,'Subject: '+node('accessEmailSubject').value+'\n\n'+body);
+ await context.sendAccessEmail();assert.equal(sent.subject,'Access invitation and additional instructions');assert.equal(sent.body,body);assert.equal(sent.to,mail.details.email);
+ assert.equal(node('accessEmailBody').value,'');assert.equal(node('sendAccessEmail').disabled,true);
 });

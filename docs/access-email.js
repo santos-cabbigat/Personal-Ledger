@@ -4,15 +4,15 @@ const LedgerAccessEmail = (() => {
   const scope = 'https://www.googleapis.com/auth/gmail.send';
   const appUrl = 'https://santos-cabbigat.github.io/Personal-Ledger/';
   let ready, clientId, accessToken = '', expiresAt = 0, sending = false;
-  function compose({email, password, books, sender}) {
+  function compose({email, password, books, sender, senderName='Santos Cabbigat'}) {
     if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email)) throw Error('Enter one valid recipient email address.');
     const access = Object.entries(books).map(([book,role]) => '- ' + book + ': ' + (role === 'editor' ? 'Co-editor' : 'View only')).join('\n');
-    return {to:email, subject:'Your Personal & Business Ledger Access', body:
+    return {to:email, senderName, subject:'Your Personal & Business Ledger Access', body:
       'Dear Ledger User,\n\nYou have been granted access to the Personal & Business Ledger. Please use the following details to sign in:\n\n' +
       'App link: ' + appUrl + '\nEmail: ' + email + '\nPassword: ' + (password || 'Please use the password previously provided to you.') +
       '\n\nYour authorized book access:\n' + access +
       '\n\nOpen the app link and enter the email address and password shown above. Please keep your login details confidential and do not share them with others.' +
-      '\n\nIf you need assistance or a password change, please contact the ledger administrator.\n\nKind regards,\nLedger Administrator\n' + sender};
+      '\n\nIf you need assistance or a password change, please contact the ledger administrator.\n\nKind regards,\n' + senderName};
   }
   function prepare() {
     if (ready) return ready;
@@ -40,15 +40,16 @@ const LedgerAccessEmail = (() => {
       client.requestAccessToken({prompt:'',login_hint:sender});
     });
   }
-  function rawMessage(message) {
+  function rawMessage(message,sender) {
     const base64 = value => btoa(String.fromCharCode(...new TextEncoder().encode(value)));
-    const mime = ['To: '+message.to,'Subject: =?UTF-8?B?'+base64(message.subject)+'?=',
+    const mime = ['From: =?UTF-8?B?'+base64(message.senderName||'Santos Cabbigat')+'?= <'+sender+'>','To: '+message.to,'Subject: =?UTF-8?B?'+base64(message.subject)+'?=',
       'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',
       base64(message.body).match(/.{1,76}/g).join('\r\n')].join('\r\n');
     return base64(mime).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   }
   async function send(message,sender,validate) {
     if (sending) throw Error('An email is already being sent.');
+    if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(sender)) throw Error('The sender email is invalid.');
     if (!clientId || !window.google?.accounts?.oauth2) throw Error('Wait for the email connection to finish loading, then press Send email.');
     sending = true;
     try {
@@ -56,7 +57,7 @@ const LedgerAccessEmail = (() => {
       await validate();
       let response;
       try {response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{
-        method:'POST',cache:'no-store',credentials:'omit',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({raw:rawMessage(message)})});}
+        method:'POST',cache:'no-store',credentials:'omit',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({raw:rawMessage(message,sender)})});}
       catch {throw Error('The email result could not be confirmed. Check Sent mail before trying again.');}
       let result;
       try {result = await response.json();} catch {throw Error('The email result could not be confirmed. Check Sent mail before trying again.');}

@@ -273,7 +273,7 @@ tr:last-child td { border-bottom: 0; }
 .passwordWrap input { width: 100%; margin-top: 0; padding-right: 54px; }
 .passwordWrap .passwordEye, #accessActions .passwordEye { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); width: 44px; min-width: 44px; height: 44px; padding: 10px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--teal); box-shadow: none; }
 .passwordEye:focus-visible { outline: 2px solid var(--teal); outline-offset: -3px; }
-.emailPreview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--face); }
+.emailPreview { display: block; width: 100%; min-height: 300px; max-height: 60dvh; resize: vertical; white-space: pre-wrap; overflow-wrap: anywhere; font: 15px/1.5 Inter, "Segoe UI", Arial, sans-serif; font-weight: 400; color: var(--ink); padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--face); margin-top: 5px; }
 </style>
 </head><body>
 <main>
@@ -302,15 +302,15 @@ const LedgerAccessEmail = (() => {
   const scope = 'https://www.googleapis.com/auth/gmail.send';
   const appUrl = 'https://santos-cabbigat.github.io/Personal-Ledger/';
   let ready, clientId, accessToken = '', expiresAt = 0, sending = false;
-  function compose({email, password, books, sender}) {
+  function compose({email, password, books, sender, senderName='Santos Cabbigat'}) {
     if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email)) throw Error('Enter one valid recipient email address.');
     const access = Object.entries(books).map(([book,role]) => '- ' + book + ': ' + (role === 'editor' ? 'Co-editor' : 'View only')).join('\n');
-    return {to:email, subject:'Your Personal & Business Ledger Access', body:
+    return {to:email, senderName, subject:'Your Personal & Business Ledger Access', body:
       'Dear Ledger User,\n\nYou have been granted access to the Personal & Business Ledger. Please use the following details to sign in:\n\n' +
       'App link: ' + appUrl + '\nEmail: ' + email + '\nPassword: ' + (password || 'Please use the password previously provided to you.') +
       '\n\nYour authorized book access:\n' + access +
       '\n\nOpen the app link and enter the email address and password shown above. Please keep your login details confidential and do not share them with others.' +
-      '\n\nIf you need assistance or a password change, please contact the ledger administrator.\n\nKind regards,\nLedger Administrator\n' + sender};
+      '\n\nIf you need assistance or a password change, please contact the ledger administrator.\n\nKind regards,\n' + senderName};
   }
   function prepare() {
     if (ready) return ready;
@@ -338,15 +338,16 @@ const LedgerAccessEmail = (() => {
       client.requestAccessToken({prompt:'',login_hint:sender});
     });
   }
-  function rawMessage(message) {
+  function rawMessage(message,sender) {
     const base64 = value => btoa(String.fromCharCode(...new TextEncoder().encode(value)));
-    const mime = ['To: '+message.to,'Subject: =?UTF-8?B?'+base64(message.subject)+'?=',
+    const mime = ['From: =?UTF-8?B?'+base64(message.senderName||'Santos Cabbigat')+'?= <'+sender+'>','To: '+message.to,'Subject: =?UTF-8?B?'+base64(message.subject)+'?=',
       'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',
       base64(message.body).match(/.{1,76}/g).join('\r\n')].join('\r\n');
     return base64(mime).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   }
   async function send(message,sender,validate) {
     if (sending) throw Error('An email is already being sent.');
+    if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(sender)) throw Error('The sender email is invalid.');
     if (!clientId || !window.google?.accounts?.oauth2) throw Error('Wait for the email connection to finish loading, then press Send email.');
     sending = true;
     try {
@@ -354,7 +355,7 @@ const LedgerAccessEmail = (() => {
       await validate();
       let response;
       try {response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{
-        method:'POST',cache:'no-store',credentials:'omit',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({raw:rawMessage(message)})});}
+        method:'POST',cache:'no-store',credentials:'omit',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({raw:rawMessage(message,sender)})});}
       catch {throw Error('The email result could not be confirmed. Check Sent mail before trying again.');}
       let result;
       try {result = await response.json();} catch {throw Error('The email result could not be confirmed. Check Sent mail before trying again.');}
@@ -629,33 +630,39 @@ function togglePassword(id,button){
 function accessEmailPreview(details){
   if(!data?.owner)return;
   const message=LedgerAccessEmail.compose(details);
-  settingsDialog('Access saved · Email preview','<p class="sub">Review the recipient and login details, then press Send email. The message sends from the Google account you authorize.</p>'+
+  settingsDialog('Access saved · Email preview','<p class="sub">Edit the subject or message below, then press Send email. Edits apply to this email. The message sends from your authorized Google account.</p>'+
     field('To','<input type="email" readonly value="'+esc(message.to)+'">')+
     (details.password?field('Assigned password',passwordInput('emailPassword','readonly value="'+esc(details.password)+'"')):'<p class="sub">Existing passwords cannot be retrieved. This email will refer to their previously assigned password.</p>')+
-    field('Subject','<input readonly value="'+esc(message.subject)+'">')+
-    '<pre class="emailPreview">'+esc(message.body.replace('Password: '+details.password+'\n','Password: [assigned password shown above]\n'))+'</pre>'+
+    field('Subject','<input id="accessEmailSubject" maxlength="180" value="'+esc(message.subject)+'">')+
+    field('Message','<textarea id="accessEmailBody" class="emailPreview" rows="16" maxlength="20000" spellcheck="true">'+esc(message.body)+'</textarea>')+
     '<p id="emailStatus" role="status">Preparing email connection…</p><div class="actions"><button type="button" class="primary" id="sendAccessEmail" disabled onclick="sendAccessEmail()">Send email</button><button type="button" id="copyAccessEmail" onclick="copyAccessEmail()">Copy email</button></div>',peopleSettings);
   const pending={details,message,sent:false};pendingAccessEmail=pending;
   LedgerAccessEmail.prepare().then(()=>{if(pendingAccessEmail===pending){el('sendAccessEmail').disabled=false;el('emailStatus').textContent='Ready to send.';}}).catch(e=>{if(pendingAccessEmail===pending)el('emailStatus').textContent=e.message;});
 }
+function editedAccessEmail(){
+  const message={...pendingAccessEmail.message,subject:el('accessEmailSubject').value.trim(),body:el('accessEmailBody').value};
+  if(!message.subject||!message.body.trim())throw Error('Enter an email subject and message.');
+  return message;
+}
 async function copyAccessEmail(){
-  if(!pendingAccessEmail)return;
-  try{const m=pendingAccessEmail.message;await navigator.clipboard.writeText('Subject: '+m.subject+'\n\n'+m.body);el('emailStatus').textContent='Email copied, including the assigned password.';}catch{el('emailStatus').textContent='Clipboard access was not available.';}
+  if(locked||!pendingAccessEmail||pendingAccessEmail.sent)return;
+  try{const m=editedAccessEmail();await navigator.clipboard.writeText('Subject: '+m.subject+'\n\n'+m.body);el('emailStatus').textContent='Your edited email was copied.';}catch(e){el('emailStatus').textContent=e.message||'Clipboard access was not available.';}
 }
 async function sendAccessEmail(){
   const pending=pendingAccessEmail;
   if(locked||!data?.owner||!pending||pending.sent)return;
-  locked=true;el('sendAccessEmail').disabled=true;el('emailStatus').textContent='Connecting to Google and sending…';
+  let message;try{message=editedAccessEmail();}catch(e){el('emailStatus').textContent=e.message;return;}
+  locked=true;el('accessEmailSubject').readOnly=true;el('accessEmailBody').readOnly=true;el('sendAccessEmail').disabled=true;el('emailStatus').textContent='Connecting to Google and sending…';
   try{
-    await LedgerAccessEmail.send(pending.message,pending.details.sender,async()=>{
+    await LedgerAccessEmail.send(message,pending.details.sender,async()=>{
       const members=await call('listAccess'),member=members.find(p=>p.email===pending.message.to);
       if(!member||member.version!==pending.details.version||Object.keys(member.books).length!==Object.keys(pending.details.books).length||
           !Object.entries(pending.details.books).every(([book,role])=>member.books[book]===role))throw Error('This person’s access changed. Reopen the person and prepare a new email. Nothing was sent.');
     });
     pending.sent=true;pending.details.password='';pending.message.body='';el('copyAccessEmail').disabled=true;
-    if(el('emailPassword'))el('emailPassword').value='';
+    if(el('emailPassword'))el('emailPassword').value='';el('accessEmailBody').value='';
     el('emailStatus').textContent='Email sent to '+pending.message.to+'.';
-  }catch(e){el('emailStatus').textContent=e.message;el('sendAccessEmail').disabled=false;}finally{locked=false;}
+  }catch(e){el('emailStatus').textContent=e.message;el('sendAccessEmail').disabled=false;el('accessEmailSubject').readOnly=false;el('accessEmailBody').readOnly=false;}finally{locked=false;}
 }
 function btn(label,fn,primary=false){return '<button class="'+(primary?'primary':'')+'" onclick="'+fn+'">'+label+'</button>'}
 function groupEntries(rows){const groups=new Map();rows.forEach(r=>{const key=r.groupKey||r.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r)});return [...groups.values()].reverse()}
