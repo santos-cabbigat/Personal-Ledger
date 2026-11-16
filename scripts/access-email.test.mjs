@@ -101,3 +101,62 @@ test('the sender can edit the default subject and message, and both Copy and Sen
  await context.sendAccessEmail();assert.equal(sent.subject,'Access invitation and additional instructions');assert.equal(sent.body,body);assert.equal(sent.to,mail.details.email);
  assert.equal(node('accessEmailBody').value,'');assert.equal(node('sendAccessEmail').disabled,true);
 });
+
+function mailAppPage() {
+  const {context,node,backend}=page(),mail=mailEnv(),drafts=[];
+  context.LedgerAccessEmail={
+    compose:mail.api.compose,mailAppUrl:mail.api.mailAppUrl,
+    prepare:async()=>{throw Error('Google unavailable');}
+  };
+  vm.runInContext("data={owner:true,email:'owner@example.com'}",context);
+  const member={email:'reviewer+nov@example.com',books:mail.details.books,version:'v1'};
+  backend.call=async()=>[member];
+  context.window.location={assign:url=>drafts.push(new URL(url))};
+  context.accessEmailPreview({...mail.details,email:member.email,version:member.version});
+  node('accessEmailSubject').value='Access & November';
+  node('accessEmailBody').value='Password: ?&bcc=another@example.com\n✓ ລາວ';
+  return {context,node,backend,drafts,member};
+}
+test('opening the edited invitation in a mail app works without Google setup and does not mark it sent',async()=>{
+  const {context,node,drafts,member}=mailAppPage();
+  await context.sendAccessEmail(true);
+  assert.equal(drafts.length,1);
+  const [draft]=drafts;
+  assert.equal(draft.protocol,'mailto:');
+  assert.equal(decodeURIComponent(draft.pathname),member.email);
+  assert.deepEqual([...draft.searchParams.keys()],['subject','body']);
+  assert.equal(draft.searchParams.get('subject'),node('accessEmailSubject').value);
+  assert.equal(draft.searchParams.get('body'),node('accessEmailBody').value.replace(/\n/g,'\r\n'));
+  assert.equal(node('accessEmailBody').readOnly,false);
+  assert.equal(node('sendAccessEmail').disabled,true);
+  assert.match(node('emailStatus').textContent,/tap Send in your email app/);
+});
+test('mail app handoff stops if access changed and uses a fresh tap if validation outlasted the user gesture',async()=>{
+  const {context,node,backend,drafts,member}=mailAppPage();
+  backend.call=async()=>[{...member,version:'v2'}];
+  await context.sendAccessEmail(true);
+  assert.equal(drafts.length,0);
+  assert.match(node('emailStatus').textContent,/access changed/);
+  backend.call=async()=>[member];
+  context.window.navigator={userActivation:{isActive:false}};
+  await context.sendAccessEmail(true);
+  assert.equal(drafts.length,0);
+  assert.match(node('emailStatus').textContent,/Tap Open in email app again/);
+  node('accessEmailSubject').value='Edited before opening';
+  context.window.navigator.userActivation.isActive=true;
+  await context.sendAccessEmail(true);
+  assert.equal(drafts.length,1);
+  assert.equal(drafts[0].searchParams.get('subject'),'Edited before opening');
+});
+test('after Gmail rejects a direct send for disabled API, the edited draft is ready for the mail app',async()=>{
+  const {context,node,drafts}=mailAppPage(),mail=mailEnv({failure:true});
+  await mail.api.prepare();
+  context.LedgerAccessEmail=mail.api;
+  await context.sendAccessEmail();
+  assert.equal(node('gmailSetup').hidden,false);
+  assert.equal(drafts.length,0);
+  assert.match(node('emailStatus').textContent,/Choose Open in email app/);
+  await context.sendAccessEmail(true);
+  assert.equal(drafts.length,1);
+  assert.equal(mail.calls.filter(c=>c.url.includes('/messages/send')).length,1);
+});

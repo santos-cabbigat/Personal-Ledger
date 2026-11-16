@@ -361,15 +361,25 @@ const LedgerAccessEmail = (() => {
       try {result = await response.json();} catch {throw Error('The email result could not be confirmed. Check Sent mail before trying again.');}
       if (response.status === 401) {accessToken = '';expiresAt = 0;throw Error('Your Google email connection expired. Press Send email to reconnect.');}
       if (!response.ok) {
-        const disabled = result.error?.details?.some(d => d.reason === 'SERVICE_DISABLED') || /not been used|disabled/i.test(result.error?.message || '');
-        throw Error(disabled ? 'Email sending needs Gmail API activation for this app. Your access is saved; no email was sent. You can copy the email below.' : 'Google did not accept the email. Check your email permission and try again.');
+        const disabled = result.error?.details?.some(d => d.reason === 'SERVICE_DISABLED') || /Gmail API.*(?:has not been used|is disabled)/i.test(result.error?.message || '');
+        if (disabled) {
+          const error = Error('Direct sending needs Gmail API activation. Your invitation is saved in this window. Choose Open in email app to send it now.');
+          error.code = 'GMAIL_API_DISABLED';
+          throw error;
+        }
+        throw Error('Google did not accept the email. Check your email permission and try again.');
       }
       if (!result.id) throw Error('The email result could not be confirmed. Check Sent mail before trying again.');
       return result.id;
     } finally {sending = false;}
   }
   function clear() {accessToken = '';expiresAt = 0;}
-  return {compose,prepare,send,clear};
+  function mailAppUrl({to, subject, body}) {
+    const address = encodeURIComponent(to).replace('%40', '@');
+    const text = body.replace(/\r\n|\r|\n/g, '\r\n');
+    return 'mailto:' + address + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
+  }
+  return {compose,prepare,send,clear,mailAppUrl};
 })();
 </script>
 <script>/* Shared report models for the screen, CSV and styled Excel. No ledger writes. */
@@ -630,14 +640,21 @@ function togglePassword(id,button){
 function accessEmailPreview(details){
   if(!data?.owner)return;
   const message=LedgerAccessEmail.compose(details);
-  settingsDialog('Access saved · Email preview','<p class="sub">Edit the subject or message below, then press Send email. Edits apply to this email. The message sends from your authorized Google account.</p>'+
+  settingsDialog('Access saved · Email preview','<p class="sub">Edit your invitation, then open it in your email app to review and send. You can also send directly from your connected Gmail account.</p>'+
     field('To','<input type="email" readonly value="'+esc(message.to)+'">')+
     (details.password?field('Assigned password',passwordInput('emailPassword','readonly value="'+esc(details.password)+'"')):'<p class="sub">Existing passwords cannot be retrieved. This email will refer to their previously assigned password.</p>')+
     field('Subject','<input id="accessEmailSubject" maxlength="180" value="'+esc(message.subject)+'">')+
     field('Message','<textarea id="accessEmailBody" class="emailPreview" rows="16" maxlength="20000" spellcheck="true">'+esc(message.body)+'</textarea>')+
-    '<p id="emailStatus" role="status">Preparing email connection…</p><div class="actions"><button type="button" class="primary" id="sendAccessEmail" disabled onclick="sendAccessEmail()">Send email</button><button type="button" id="copyAccessEmail" onclick="copyAccessEmail()">Copy email</button></div>',peopleSettings);
-  const pending={details,message,sent:false};pendingAccessEmail=pending;
-  LedgerAccessEmail.prepare().then(()=>{if(pendingAccessEmail===pending){el('sendAccessEmail').disabled=false;el('emailStatus').textContent='Ready to send.';}}).catch(e=>{if(pendingAccessEmail===pending)el('emailStatus').textContent=e.message;});
+    '<div class="actions"><button type="button" class="primary" id="openAccessEmail" onclick="sendAccessEmail(true)">Open in email app</button><button type="button" id="sendAccessEmail" disabled onclick="sendAccessEmail()">Send directly via Gmail</button><button type="button" id="copyAccessEmail" onclick="copyAccessEmail()">Copy email</button></div>'+
+    '<p id="emailStatus" role="status"></p><p id="gmailSetup" hidden><a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=407561237836" target="_blank" rel="noopener noreferrer">Enable Gmail for direct sending</a></p>',peopleSettings);
+  const pending={details,message,sent:false,directReady:false};pendingAccessEmail=pending;
+  LedgerAccessEmail.prepare().then(()=>{
+    if(pendingAccessEmail!==pending)return;
+    pending.directReady=true;
+    if(!pending.busy&&!pending.sent)el('sendAccessEmail').disabled=false;
+  }).catch(()=>{
+    if(pendingAccessEmail===pending&&!el('emailStatus').textContent)el('emailStatus').textContent='Direct Gmail sending is unavailable. You can use Open in email app.';
+  });
 }
 function editedAccessEmail(){
   const message={...pendingAccessEmail.message,subject:el('accessEmailSubject').value.trim(),body:el('accessEmailBody').value};
@@ -648,21 +665,52 @@ async function copyAccessEmail(){
   if(locked||!pendingAccessEmail||pendingAccessEmail.sent)return;
   try{const m=editedAccessEmail();await navigator.clipboard.writeText('Subject: '+m.subject+'\n\n'+m.body);el('emailStatus').textContent='Your edited email was copied.';}catch(e){el('emailStatus').textContent=e.message||'Clipboard access was not available.';}
 }
-async function sendAccessEmail(){
+async function sendAccessEmail(useMailApp=false){
   const pending=pendingAccessEmail;
-  if(locked||!data?.owner||!pending||pending.sent)return;
+  if(locked||!data?.owner||!pending||pending.sent||data.email!==pending.details.sender)return;
   let message;try{message=editedAccessEmail();}catch(e){el('emailStatus').textContent=e.message;return;}
-  locked=true;el('accessEmailSubject').readOnly=true;el('accessEmailBody').readOnly=true;el('sendAccessEmail').disabled=true;el('emailStatus').textContent='Connecting to Google and sending…';
+  const validate=async()=>{
+    const members=await call('listAccess'),member=members.find(p=>p.email===pending.message.to);
+    if(pendingAccessEmail!==pending||!data?.owner||data.email!==pending.details.sender||!member||member.version!==pending.details.version||
+        Object.keys(member.books).length!==Object.keys(pending.details.books).length||
+        !Object.entries(pending.details.books).every(([book,role])=>member.books[book]===role))throw Error('This person’s access changed. Reopen the person and prepare a new email. Nothing was sent.');
+  };
+  locked=true;pending.busy=true;el('accessEmailSubject').readOnly=true;el('accessEmailBody').readOnly=true;
+  el('sendAccessEmail').disabled=true;el('openAccessEmail').disabled=true;
+  el('emailStatus').textContent=useMailApp?'Checking book access…':'Connecting to Google and sending…';
   try{
-    await LedgerAccessEmail.send(message,pending.details.sender,async()=>{
-      const members=await call('listAccess'),member=members.find(p=>p.email===pending.message.to);
-      if(!member||member.version!==pending.details.version||Object.keys(member.books).length!==Object.keys(pending.details.books).length||
-          !Object.entries(pending.details.books).every(([book,role])=>member.books[book]===role))throw Error('This person’s access changed. Reopen the person and prepare a new email. Nothing was sent.');
-    });
+    if(useMailApp){
+      // Mobile browsers may need a fresh tap after a slow access check.
+      if(!(pending.openUntil>Date.now())){
+        await validate();
+        if(window.navigator?.userActivation?.isActive===false){
+          pending.openUntil=Date.now()+30000;
+          el('emailStatus').textContent='Book access confirmed. Tap Open in email app again to open the draft.';
+          return;
+        }
+      }
+      pending.openUntil=0;
+      window.location.assign(LedgerAccessEmail.mailAppUrl(message));
+      el('emailStatus').textContent='Check the From account and tap Send in your email app. If it didn’t open, choose Copy email.';
+      return;
+    }
+    pending.openUntil=0;
+    await LedgerAccessEmail.send(message,pending.details.sender,validate);
     pending.sent=true;pending.details.password='';pending.message.body='';el('copyAccessEmail').disabled=true;
     if(el('emailPassword'))el('emailPassword').value='';el('accessEmailBody').value='';
     el('emailStatus').textContent='Email sent to '+pending.message.to+'.';
-  }catch(e){el('emailStatus').textContent=e.message;el('sendAccessEmail').disabled=false;el('accessEmailSubject').readOnly=false;el('accessEmailBody').readOnly=false;}finally{locked=false;}
+  }catch(e){
+    if(pendingAccessEmail===pending){
+      el('emailStatus').textContent=e.message;
+      if(e.code==='GMAIL_API_DISABLED')el('gmailSetup').hidden=false;
+    }
+  }finally{
+    pending.busy=false;locked=false;
+    if(pendingAccessEmail===pending&&!pending.sent){
+      el('sendAccessEmail').disabled=!pending.directReady;el('openAccessEmail').disabled=false;
+      el('accessEmailSubject').readOnly=false;el('accessEmailBody').readOnly=false;
+    }
+  }
 }
 function btn(label,fn,primary=false){return '<button class="'+(primary?'primary':'')+'" onclick="'+fn+'">'+label+'</button>'}
 function groupEntries(rows){const groups=new Map();rows.forEach(r=>{const key=r.groupKey||r.id;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r)});return [...groups.values()].reverse()}
@@ -1156,7 +1204,7 @@ function personForm(index){
   settingsDialog(adding?'Add person':'Manage person','<form id="personForm" onsubmit="event.preventDefault();savePerson('+index+',event.submitter?.dataset.email===\'1\')">'+
     field('Email','<input id="personEmail" type="email" autocomplete="off" required '+(adding?'':'readonly')+' value="'+esc(person?.email||'')+'">')+
     field(adding?'Password you assign':'New password (optional)',passwordInput('personPass','autocomplete="new-password" minlength="10" '+(adding?'required':'')))+
-    '<p class="sub">Save access, or prepare a formal email with the app link and login details. Email is sent only when you press Send email.</p>'+
+    '<p class="sub">Save access, or prepare an invitation with the app link and login details to review and send.</p>'+
     '<fieldset class="bookGrants"><legend>Book access</legend>'+bookFields+'</fieldset><p class="sub">Both roles can download reports. Co-editors can also add accounts and record or edit entries.</p>'+
     '<div class="actions"><button type="submit">Save access</button><button class="primary" type="submit" data-email="1">Save &amp; prepare email</button></div></form>'+
     (adding?'':'<button type="button" class="revokePerson" onclick="confirmRevoke('+index+')">Revoke access</button>'),peopleSettings);

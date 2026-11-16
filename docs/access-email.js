@@ -63,13 +63,23 @@ const LedgerAccessEmail = (() => {
       try {result = await response.json();} catch {throw Error('The email result could not be confirmed. Check Sent mail before trying again.');}
       if (response.status === 401) {accessToken = '';expiresAt = 0;throw Error('Your Google email connection expired. Press Send email to reconnect.');}
       if (!response.ok) {
-        const disabled = result.error?.details?.some(d => d.reason === 'SERVICE_DISABLED') || /not been used|disabled/i.test(result.error?.message || '');
-        throw Error(disabled ? 'Email sending needs Gmail API activation for this app. Your access is saved; no email was sent. You can copy the email below.' : 'Google did not accept the email. Check your email permission and try again.');
+        const disabled = result.error?.details?.some(d => d.reason === 'SERVICE_DISABLED') || /Gmail API.*(?:has not been used|is disabled)/i.test(result.error?.message || '');
+        if (disabled) {
+          const error = Error('Direct sending needs Gmail API activation. Your invitation is saved in this window. Choose Open in email app to send it now.');
+          error.code = 'GMAIL_API_DISABLED';
+          throw error;
+        }
+        throw Error('Google did not accept the email. Check your email permission and try again.');
       }
       if (!result.id) throw Error('The email result could not be confirmed. Check Sent mail before trying again.');
       return result.id;
     } finally {sending = false;}
   }
   function clear() {accessToken = '';expiresAt = 0;}
-  return {compose,prepare,send,clear};
+  function mailAppUrl({to, subject, body}) {
+    const address = encodeURIComponent(to).replace('%40', '@');
+    const text = body.replace(/\r\n|\r|\n/g, '\r\n');
+    return 'mailto:' + address + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
+  }
+  return {compose,prepare,send,clear,mailAppUrl};
 })();
