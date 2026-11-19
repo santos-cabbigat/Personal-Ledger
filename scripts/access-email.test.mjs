@@ -186,3 +186,20 @@ test('embedded visitors get a browser handoff before the password form',()=>{
   assert.match(node('accessActions').innerHTML,/loginPassword/);
  }
 });
+
+test('reopening an assigned password masks its saved value and permission-only saves keep the login',async()=>{
+ const {context,node,backend}=page();
+ const member={email:'reviewer@example.com',version:'v1',books:{Personal:'viewer'}};
+ vm.runInContext("data={owner:true,books:['Personal'],email:'owner@example.com'}",context);
+ context.member=member;vm.runInContext('people=[member]',context);
+ const input=node('personPass');input.isConnected=true;
+ context.ledgerDb.assignedPassword=async()=>'Example-Only123';
+ await context.loadAssignedPassword(member);
+ assert.equal(input.value,'Example-Only123');assert.equal(input.defaultValue,input.value);
+ node('personEmail').value=member.email;node('includeBook0').checked=true;node('grant0').value='editor';
+ const calls=[];backend.call=async name=>{calls.push(name);return [member];};
+ context.ledgerDb.provisionReviewer=async()=>calls.push('replace');
+ context.peopleSettings=async()=>{};
+ await context.savePerson(0);assert.deepEqual(calls,['saveAccess']);
+ input.value='Replacement123';await context.savePerson(0);assert.deepEqual(calls,['saveAccess','replace']);
+});

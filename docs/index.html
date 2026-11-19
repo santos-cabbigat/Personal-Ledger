@@ -24,7 +24,7 @@
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><button type="button" id="settingsBack" aria-label="Back" hidden>‹</button><h2 id="heading" tabindex="-1"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <script src="vendor/supabase.js"></script>
-<script src="personal-db.js?v=6"></script>
+<script src="personal-db.js?v=7"></script>
 <script src="access-email.js?v=4"></script>
 <script src="demo.js"></script><script src="report-downloads.js?v=1"></script><script>
 
@@ -237,7 +237,7 @@ function accessEmailPreview(details){
   const message=LedgerAccessEmail.compose(details);
   settingsDialog('Access saved · Email preview','<p class="sub">Edit your invitation, then open it in your email app to review and send. You can also send directly from your connected Gmail account.</p>'+
     field('To','<input type="email" readonly value="'+esc(message.to)+'">')+
-    (details.password?field('Assigned password',passwordInput('emailPassword','readonly value="'+esc(details.password)+'"')):'<p class="sub">Existing passwords cannot be retrieved. This email will refer to their previously assigned password.</p>')+
+    (details.password?field('Assigned password',passwordInput('emailPassword','readonly value="'+esc(details.password)+'"')):'<p class="sub">No saved password is available. This email will refer to their previously assigned password.</p>')+
     field('Subject','<input id="accessEmailSubject" maxlength="180" value="'+esc(message.subject)+'">')+
     field('Message','<textarea id="accessEmailBody" class="emailPreview" rows="16" maxlength="20000" spellcheck="true">'+esc(message.body)+'</textarea>')+
     '<div class="actions"><button type="button" class="primary" id="openAccessEmail" onclick="sendAccessEmail(true)">Open in email app</button><button type="button" id="sendAccessEmail" disabled onclick="sendAccessEmail()">Send directly via Gmail</button><button type="button" id="copyAccessEmail" onclick="copyAccessEmail()">Copy email</button></div>'+
@@ -824,11 +824,26 @@ function personForm(index){
   }).join('');
   settingsDialog(adding?'Add person':'Manage person','<form id="personForm" onsubmit="event.preventDefault();savePerson('+index+',event.submitter?.dataset.email===\'1\')">'+
     field('Email','<input id="personEmail" type="email" autocomplete="off" required '+(adding?'':'readonly')+' value="'+esc(person?.email||'')+'">')+
-    field(adding?'Password you assign':'New password (optional)',passwordInput('personPass','autocomplete="new-password" minlength="10" '+(adding?'required':'')))+
+    field(adding?'Password you assign':'Assigned password',passwordInput('personPass','autocomplete="new-password" minlength="10" '+(adding?'required':'disabled'))) +
+    '<p class="sub" id="passwordNote"></p>'+
     '<p class="sub">Save access, or prepare an invitation with the app link and login details to review and send.</p>'+
     '<fieldset class="bookGrants"><legend>Book access</legend>'+bookFields+'</fieldset><p class="sub">Both roles can download reports. Co-editors can also add accounts and record or edit entries.</p>'+
     '<div class="actions"><button type="submit">Save access</button><button class="primary" type="submit" data-email="1">Save &amp; prepare email</button></div></form>'+
     (adding?'':'<button type="button" class="revokePerson" onclick="confirmRevoke('+index+')">Revoke access</button>'),peopleSettings);
+  if(person)loadAssignedPassword(person);
+}
+async function loadAssignedPassword(person){
+  const input=el('personPass'),note=el('passwordNote');
+  note.textContent='Loading assigned password…';
+  try{
+    const saved=await ledgerDb.assignedPassword(person.email,person.version);
+    if(!input.isConnected)return;
+    input.value=saved||'';
+    input.defaultValue=input.value;
+    note.textContent=saved?'Use the eye to view the password, or type a replacement.':'This older password has no saved copy. Leave it blank to keep it, or enter a password to remember.';
+    input.disabled=false;
+  }catch(e){if(input.isConnected)note.textContent=e.message+' Reopen this person to retry.';}
+
 }
 function setBookSelected(index,checked){
   const role=el('grant'+index);
@@ -836,14 +851,14 @@ function setBookSelected(index,checked){
   if(!checked)role.value='viewer';
 }
 async function savePerson(index,prepareEmail=false){
-  if(locked)return;
-  const books={},email=el('personEmail').value.trim().toLowerCase(),password=el('personPass').value;
+  if(locked||el('personPass').disabled)return;
+  const books={},email=el('personEmail').value.trim().toLowerCase(),password=el('personPass').value||(index>=0?el('personPass').defaultValue:'');
   data.books.forEach((book,i)=>{if(el('includeBook'+i).checked)books[book]=el('grant'+i).value;});
   if(!Object.keys(books).length){el('err').textContent='Choose access for at least one book.';return;}
   const payload={email,books,version:people[index]?.version};
   locked=true;
   try{
-    if(password)await ledgerDb.provisionReviewer({...payload,password});
+    if(password && (index<0 || password!==el('personPass').defaultValue))await ledgerDb.provisionReviewer({...payload,password});
     else await call('saveAccess',payload);
     if(prepareEmail){
       const members=await call('listAccess'),member=members.find(p=>p.email===email);

@@ -25,7 +25,7 @@ Deno.serve(async req => {
     email: crypto.randomUUID() + "@reviewer.invalid", password, email_confirm: true, app_metadata: { ledger_reviewer: email }
   });
   if (error || !data.user) return reply({ error: "Could not create the reviewer login. Check the password and try again." }, 400);
-  const saved = await owner.rpc("personal_ledger", { action: "saveAccess", p: {
+  const saved = await owner.rpc("ledger_assign_reviewer", { assigned_password: password, p: {
     email, books: input.books, version: input.version, loginId: data.user.id
   } });
   if (saved.error) {

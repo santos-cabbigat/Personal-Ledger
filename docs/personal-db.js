@@ -40,6 +40,7 @@ const ledgerDb=(()=>{
    catch(error){if(!/invalid login credentials/i.test(error.message))throw error;return passwordSignIn(email,password);}
  }
  const signInReviewer=signIn; // Existing shared links use the same sign-in flow.
+ async function assignedPassword(email,version){return check(await client.rpc('ledger_assigned_password',{address:email,expected_version:version}));}
  async function provisionReviewer(payload){
    const {data,error}=await client.functions.invoke('ledger-reviewer',{body:payload});
    if(error){
@@ -52,5 +53,5 @@ const ledgerDb=(()=>{
  async function forgot(email){return check(await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname+'?reset=1'}));}
  async function password(value){return check(await client.auth.updateUser({password:value}));}
  async function signOut(){return check(await client.auth.signOut({scope:'local'}));}
- return {isolated,embedded,serviceStatus,session,signIn,signInReviewer,provisionReviewer,signup,forgot,password,signOut,call};
+ return {isolated,embedded,serviceStatus,session,signIn,signInReviewer,assignedPassword,provisionReviewer,signup,forgot,password,signOut,call};
 })();
