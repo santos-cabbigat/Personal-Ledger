@@ -2,7 +2,7 @@
 const ledgerDb=(()=>{
  const url='https://uyyihuvjbrbsombzzvqw.supabase.co';
  const key='sb_publishable_VwYzs5ihi9tR_r1wcfCo-w_mboqCHV_';
- const embedded=/FBAN|FBAV|FB_IAB|FB4A|FBIOS|MessengerFor/i.test(globalThis.navigator?.userAgent||'');
+ const embedded=/FBAN|FBAV|FB_IAB|FB4A|FBIOS|MessengerFor|Instagram|WhatsApp|; wv\)/i.test(globalThis.navigator?.userAgent||'');
  const params=typeof location==='undefined'?null:new URLSearchParams(location.search);
  const invitation=params?.get('invite')==='1';
  const isolated=invitation||embedded;

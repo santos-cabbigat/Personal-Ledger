@@ -24,7 +24,7 @@
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><button type="button" id="settingsBack" aria-label="Back" hidden>‹</button><h2 id="heading" tabindex="-1"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <script src="vendor/supabase.js"></script>
-<script src="personal-db.js?v=5"></script>
+<script src="personal-db.js?v=6"></script>
 <script src="access-email.js?v=4"></script>
 <script src="demo.js"></script><script src="report-downloads.js?v=1"></script><script>
 
@@ -116,13 +116,31 @@ async function openServiceStatus(fromSettings=false){
   output.textContent=messages[state];
 }
 let loginMode='login';
+const invitationUrl='https://santos-cabbigat.github.io/Personal-Ledger/?invite=1';
+let continueInApp=false;
+function browserHelpActions(){
+  const android=/Android/i.test(navigator.userAgent);
+  const openChrome=android?'<a class="link" href="intent://santos-cabbigat.github.io/Personal-Ledger/?invite=1#Intent;scheme=https;package=com.android.chrome;end">Open in Chrome</a>':'';
+  return openChrome+'<p>Use the app menu and choose <strong>Open in browser</strong> or <strong>Open in external browser</strong>. You can also copy this link and paste it into Chrome or Safari.</p>'+
+    '<input aria-label="Ledger invitation link" readonly value="'+invitationUrl+'" onclick="this.select()">'+btn('Copy link','copyBrowserLink(this)');
+}
+async function copyBrowserLink(button){
+  const input=button.previousElementSibling;
+  try{await navigator.clipboard.writeText(invitationUrl);button.textContent='Link copied';}
+  catch{input.focus();input.select();button.textContent='Select and copy the link';}
+}
 function loginScreen(message='',mode='login'){
   mode=['forgot','reset'].includes(mode)?mode:'login';loginMode=mode;
+  if(pages && ledgerDb.embedded && !continueInApp && mode==='login'){
+    document.body.classList.add('loginPage');
+    accessScreen('Open the ledger in your browser','Open it in Chrome or Safari to sign in and download reports.',browserHelpActions()+btn('Continue here','continueInApp=true;loginScreen()'));
+    return;
+  }
   const reset=mode==='reset',forgot=mode==='forgot';
   const title=reset?'New password':forgot?'Reset password':'Sign in';
   const email=reset?'':field('Email','<input id="loginEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Email address" required>');
   const pass=forgot?'':field('Password',passwordInput('loginPassword','autocomplete="'+(reset?'new-password':'current-password')+'" placeholder="Password" required'));
-  const help=forgot?'Enter your email to receive a reset link.':reset?'Choose a new password.':'';
+  const help=forgot?'Enter your email to receive a reset link.':reset?'Choose a new password.':pages && new URLSearchParams(location.search).get('invite')==='1'?'If you opened this inside a messaging app, use its menu to open in Chrome or Safari before signing in.':'';
   accessScreen(title,message||help,'<form onsubmit="event.preventDefault();submitLogin()">'+email+pass+'<button class="primary" type="submit">'+(reset?'Save password':forgot?'Send reset link':'Sign in')+'</button></form>'+
     '<div class="loginLinks">'+(mode==='login'?btn('Forgot password?',"loginScreen('', 'forgot')"):btn('Back to sign in','loginScreen()'))+'</div>');
   document.body.classList.add('loginPage');
@@ -654,7 +672,7 @@ function csvBlob(rows){
 }
 
 function showExternalBrowserHelp(){
-  dialog('Save your report','<p>Open the menu in Facebook or Messenger and choose <strong>Open in external browser</strong> or <strong>Open in browser</strong>. Sign in with the same ledger email and password, then download the report again.</p><p>You can also copy this ledger address into Chrome or Safari.</p><input aria-label="Ledger address" readonly value="https://santos-cabbigat.github.io/Personal-Ledger/?invite=1" onclick="this.select()">');
+  dialog('Save your report',browserHelpActions());
 }
 async function saveReport(model,format='csv'){
   if(!data||!model)return;

@@ -172,3 +172,17 @@ test('invitation and Facebook visits isolate authentication from the returning C
   assert.equal(auth.storageKey==='personal-ledger.auth.v1',!isolated);
  }
 });
+
+test('embedded visitors get a browser handoff before the password form',()=>{
+ for(const [ua,chrome] of [['Android FB_IAB',true],['iPhone WhatsApp',false]]){
+  const {context,node}=page();
+  context.navigator={userAgent:ua};context.ledgerDb.embedded=true;
+  context.loginScreen();
+  assert.equal(node('accessTitle').textContent,'Open the ledger in your browser');
+  const actions=node('accessActions').innerHTML;
+  assert.equal(actions.includes('intent://'),chrome);
+  assert.match(actions,/\?invite=1/);assert.doesNotMatch(actions,/loginPassword/);
+  vm.runInContext('continueInApp=true;loginScreen()',context);
+  assert.match(node('accessActions').innerHTML,/loginPassword/);
+ }
+});
