@@ -24,8 +24,8 @@
 </main>
 <dialog id="modal" aria-labelledby="heading"><header><button type="button" id="settingsBack" aria-label="Back" hidden>‹</button><h2 id="heading" tabindex="-1"></h2><button aria-label="Close" onclick="closeDialog()">×</button></header><section id="content" class="body"></section><div class="notice" id="err" role="alert"></div></dialog>
 <script src="vendor/supabase.js"></script>
-<script src="personal-db.js?v=4"></script>
-<script src="access-email.js?v=3"></script>
+<script src="personal-db.js?v=5"></script>
+<script src="access-email.js?v=4"></script>
 <script src="demo.js"></script><script src="report-downloads.js?v=1"></script><script>
 
 'use strict';
@@ -654,12 +654,12 @@ function csvBlob(rows){
 }
 
 function showExternalBrowserHelp(){
-  dialog('Save your report','<p>Open the menu in Facebook or Messenger and choose <strong>Open in external browser</strong> or <strong>Open in browser</strong>. Sign in with the same ledger email and password, then download the report again.</p><p>You can also copy this ledger address into Chrome or Safari.</p><input aria-label="Ledger address" readonly value="https://santos-cabbigat.github.io/Personal-Ledger/" onclick="this.select()">');
+  dialog('Save your report','<p>Open the menu in Facebook or Messenger and choose <strong>Open in external browser</strong> or <strong>Open in browser</strong>. Sign in with the same ledger email and password, then download the report again.</p><p>You can also copy this ledger address into Chrome or Safari.</p><input aria-label="Ledger address" readonly value="https://santos-cabbigat.github.io/Personal-Ledger/?invite=1" onclick="this.select()">');
 }
 async function saveReport(model,format='csv'){
   if(!data||!model)return;
   const name=[model.name,model.scope.book,model.scope.month||[model.scope.from,model.scope.to].filter(Boolean).join('-')].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g,'-');
-  const embedded=/FBAN|FBAV|FB_IAB|FB4A|FBIOS|MessengerFor/i.test(navigator.userAgent);
+  const embedded=pages&&ledgerDb.embedded;
   const blob=format==='csv'?csvBlob(LedgerDownloads.rows(model)):LedgerDownloads.xlsx(model);
   const filename=name+'.'+format;
   if(embedded){
@@ -880,8 +880,14 @@ function sheetSettings(){
 }
 function settings(){if(!ready())return;if(inSheet)return sheetSettings();dbSettings();}
 function saveName(){write('renameLedger',[el('appName').value,data.ledgerId],settings)}
-if(pages)window.addEventListener('storage',event=>{
-  if(event.key==='personal-ledger.auth.v1' && !event.newValue){++loadVersion;resetLedger();loginScreen();}
+if(pages)window.addEventListener('pageshow',event=>{
+  if(event.persisted)location.reload();
+});
+if(pages&&!ledgerDb.isolated)window.addEventListener('storage',event=>{
+  if(event.key!=='personal-ledger.auth.v1')return;
+  if(!event.newValue){++loadVersion;resetLedger();loginScreen();return;}
+  const identity=value=>{try{return JSON.parse(value)?.user?.id;}catch{return null;}};
+  if(identity(event.oldValue)!==identity(event.newValue))location.reload();
 });
 const serverLedger = null;
 const showMonthOnOpen = false;

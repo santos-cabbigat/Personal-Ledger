@@ -2,7 +2,16 @@
 const ledgerDb=(()=>{
  const url='https://uyyihuvjbrbsombzzvqw.supabase.co';
  const key='sb_publishable_VwYzs5ihi9tR_r1wcfCo-w_mboqCHV_';
- const client=supabase.createClient(url,key,{auth:{storageKey:'personal-ledger.auth.v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ const embedded=/FBAN|FBAV|FB_IAB|FB4A|FBIOS|MessengerFor/i.test(globalThis.navigator?.userAgent||'');
+ const params=typeof location==='undefined'?null:new URLSearchParams(location.search);
+ const invitation=params?.get('invite')==='1';
+ const isolated=invitation||embedded;
+ const client=supabase.createClient(url,key,{auth:{
+   storageKey:isolated?'personal-ledger.guest':'personal-ledger.auth.v1',
+   persistSession:!isolated,
+   autoRefreshToken:true,
+   detectSessionInUrl:!isolated||(!invitation&&params?.get('reset')==='1')
+ }});
  function check(result){
    if(result.error)throw Error((result.status===540||result.error.status===540||result.error.code==='PROJECT_PAUSED')?'Personal Ledger is paused. Resume the project to reconnect.':result.error.message);
    return result.data;
@@ -43,5 +52,5 @@ const ledgerDb=(()=>{
  async function forgot(email){return check(await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname+'?reset=1'}));}
  async function password(value){return check(await client.auth.updateUser({password:value}));}
  async function signOut(){return check(await client.auth.signOut({scope:'local'}));}
- return {serviceStatus,session,signIn,signInReviewer,provisionReviewer,signup,forgot,password,signOut,call};
+ return {isolated,embedded,serviceStatus,session,signIn,signInReviewer,provisionReviewer,signup,forgot,password,signOut,call};
 })();

@@ -2,7 +2,7 @@
 // Gmail tokens and invitation credentials are never persisted to browser storage.
 const LedgerAccessEmail = (() => {
   const scope = 'https://www.googleapis.com/auth/gmail.send';
-  const appUrl = 'https://santos-cabbigat.github.io/Personal-Ledger/';
+  const appUrl = 'https://santos-cabbigat.github.io/Personal-Ledger/?invite=1';
   let ready, clientId, accessToken = '', expiresAt = 0, sending = false;
   function compose({email, password, books, sender, senderName='Santos Cabbigat'}) {
     if (!/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(email)) throw Error('Enter one valid recipient email address.');

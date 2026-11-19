@@ -160,3 +160,15 @@ test('after Gmail rejects a direct send for disabled API, the edited draft is re
   assert.equal(drafts.length,1);
   assert.equal(mail.calls.filter(c=>c.url.includes('/messages/send')).length,1);
 });
+
+test('invitation and Facebook visits isolate authentication from the returning Chrome account',()=>{
+ const invitation=mailEnv().api.compose(mailEnv().details).body.match(/App link: (\S+)/)[1];
+ assert.equal(new URL(invitation).search,'?invite=1');
+ for(const [search,userAgent,isolated] of [['?invite=1','Chrome',true],['?fbclid=test','FB_IAB/FB4A',true],['','Chrome',false]]){
+  let auth;
+  vm.runInNewContext(read('docs/personal-db.js'),{location:{search},navigator:{userAgent},URLSearchParams,supabase:{createClient:(url,key,options)=>{auth=options.auth;return {};}}});
+  assert.equal(auth.persistSession,!isolated);
+  assert.equal(auth.detectSessionInUrl,!isolated);
+  assert.equal(auth.storageKey==='personal-ledger.auth.v1',!isolated);
+ }
+});
