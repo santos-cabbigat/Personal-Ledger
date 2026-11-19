@@ -1067,21 +1067,47 @@ function monthlyReport(book,month,clean=false,basis){
   }else dialog('Monthly report',controls+sheet+'<div class="actions">'+monthlyDownloads+btn('Screenshot view',command+',true)',true)+'</div>');
   el('modal').classList.toggle('reportClean',clean);
 }
-function csv(name,rows){
+function csvBlob(rows){
   const escapeCell=value=>{
     let s=String(value??'');
     if(typeof value==='string'&&/^[\s]*[=+@-]/.test(s)) s="'"+s;
     return '"'+s.replace(/"/g,'""')+'"';
   };
-  const blob=new Blob(['\ufeff'+rows.map(r=>r.map(escapeCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
-  const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=name+'.csv';
-  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),60000);
+  return new Blob(['\ufeff'+rows.map(r=>r.map(escapeCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
 }
-function saveReport(model,format='csv'){
+
+function showExternalBrowserHelp(){
+  dialog('Save your report','<p>Open the menu in Facebook or Messenger and choose <strong>Open in external browser</strong> or <strong>Open in browser</strong>. Sign in with the same ledger email and password, then download the report again.</p><p>You can also copy this ledger address into Chrome or Safari.</p><input aria-label="Ledger address" readonly value="https://santos-cabbigat.github.io/Personal-Ledger/" onclick="this.select()">');
+}
+async function saveReport(model,format='csv'){
   if(!data||!model)return;
   const name=[model.name,model.scope.book,model.scope.month||[model.scope.from,model.scope.to].filter(Boolean).join('-')].filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g,'-');
-  if(format==='csv')return csv(name,LedgerDownloads.rows(model));
-  const url=URL.createObjectURL(LedgerDownloads.xlsx(model)),link=document.createElement('a');link.href=url;link.download=name+'.xlsx';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  const embedded=/FBAN|FBAV|FB_IAB|FB4A|FBIOS|MessengerFor/i.test(navigator.userAgent);
+  const blob=format==='csv'?csvBlob(LedgerDownloads.rows(model)):LedgerDownloads.xlsx(model);
+  const filename=name+'.'+format;
+  if(embedded){
+    try{
+      if(typeof File==='function' && navigator.canShare && navigator.share){
+        const files=[new File([blob],filename,{type:blob.type})];
+        if(navigator.canShare({files})){
+          await navigator.share({files});
+          return;
+        }
+      }
+    }catch(error){
+      if(error.name==='AbortError')return;
+    }
+    showExternalBrowserHelp();
+    return;
+  }
+  const link=document.createElement('a');
+  const url=URL.createObjectURL(blob);
+  link.href=url;
+  link.download=filename;
+  (el('modal').open?el('content'):document.body).append(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 function openDownload(){
   if(!ready())return;
